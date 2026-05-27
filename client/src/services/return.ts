@@ -1,0 +1,193 @@
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
+
+export interface ReturnItem {
+  id: string
+  returnId: string
+  orderItemId: string
+  productId: string
+  variantId: string
+  productName: string
+  variantDescription?: string
+  quantity: number
+  newVariantId?: string
+  newProductName?: string
+  imageUrl?: string | null
+}
+
+export interface ReturnLog {
+  id: string
+  returnId: string
+  action: 'created' | 'status_changed' | 'note_added' | 'image_added' | 'refund_initiated' | 'refund_completed'
+  fromStatus?: string
+  toStatus?: string
+  operatorId?: string
+  operatorType: 'user' | 'admin' | 'system'
+  note?: string
+  createdAt: string
+}
+
+export interface ReturnRequest {
+  id: string
+  orderId: string
+  userId: string
+  type: 'return' | 'exchange' | 'refund'
+  status: 'pending' | 'approved' | 'rejected' | 'processing' | 'completed' | 'cancelled'
+  reason: 'defective' | 'wrong_item' | 'not_as_described' | 'changed_mind' | 'arrived_late' | 'other'
+  reasonDetail?: string
+  images?: string[]
+  adminNote?: string
+  processedBy?: string
+  processedAt?: string
+  refundAmount?: number
+  refundReason?: string
+  completedAt?: string
+  createdAt: string
+  updatedAt: string
+  items?: ReturnItem[]
+  logs?: ReturnLog[]
+  orderNumber?: string
+}
+
+export interface CreateReturnInput {
+  orderId: string
+  type: 'return' | 'exchange' | 'refund'
+  reason: 'defective' | 'wrong_item' | 'not_as_described' | 'changed_mind' | 'arrived_late' | 'other'
+  reasonDetail?: string
+  images?: string[]
+  items: Array<{
+    orderItemId: string
+    quantity: number
+    newVariantId?: string
+    newProductName?: string
+  }>
+}
+
+export interface ApiResponse<T> {
+  success: boolean
+  data?: T
+  error?: {
+    code: string
+    message: string
+  }
+}
+
+function getAuthHeaders() {
+  const token = localStorage.getItem('accessToken')
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }
+}
+
+function handleAuthError(res: Response) {
+  if (res.status === 401) {
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+    window.location.href = '/login'
+  }
+}
+
+export const returnService = {
+  create: async (input: CreateReturnInput): Promise<ApiResponse<ReturnRequest>> => {
+    if (USE_MOCK) {
+      return {
+        success: true,
+        data: {
+          id: 'mock-return-id',
+          orderId: input.orderId,
+          userId: 'mock-user-id',
+          type: input.type,
+          status: 'pending',
+          reason: input.reason,
+          reasonDetail: input.reasonDetail,
+          images: input.images,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          items: input.items.map((item, index) => ({
+            id: `mock-item-${index}`,
+            returnId: 'mock-return-id',
+            orderItemId: item.orderItemId,
+            productId: `product-${index}`,
+            variantId: `variant-${index}`,
+            productName: 'Product Name',
+            quantity: item.quantity,
+            newVariantId: item.newVariantId,
+            newProductName: item.newProductName,
+          })),
+        },
+      }
+    }
+    const res = await fetch(`${API_BASE_URL}/returns`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(input),
+    })
+    handleAuthError(res)
+    return res.json()
+  },
+
+  getAll: async (): Promise<ApiResponse<ReturnRequest[]>> => {
+    if (USE_MOCK) {
+      return {
+        success: true,
+        data: [],
+      }
+    }
+    const res = await fetch(`${API_BASE_URL}/returns`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    })
+    handleAuthError(res)
+    return res.json()
+  },
+
+  getById: async (returnId: string): Promise<ApiResponse<ReturnRequest>> => {
+    if (USE_MOCK) {
+      return {
+        success: true,
+        data: {
+          id: returnId,
+          orderId: 'mock-order-id',
+          userId: 'mock-user-id',
+          type: 'return',
+          status: 'pending',
+          reason: 'changed_mind',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          orderNumber: 'ORD-2024-001',
+        },
+      }
+    }
+    const res = await fetch(`${API_BASE_URL}/returns/${returnId}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    })
+    handleAuthError(res)
+    return res.json()
+  },
+
+  cancel: async (returnId: string): Promise<ApiResponse<ReturnRequest>> => {
+    if (USE_MOCK) {
+      return {
+        success: true,
+        data: {
+          id: returnId,
+          orderId: 'mock-order-id',
+          userId: 'mock-user-id',
+          type: 'return',
+          status: 'cancelled',
+          reason: 'changed_mind',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    }
+    const res = await fetch(`${API_BASE_URL}/returns/${returnId}/cancel`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+    })
+    handleAuthError(res)
+    return res.json()
+  },
+}

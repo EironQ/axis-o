@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1779710892615,
+      "tag": "0000_little_deathstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1779806415300,
+      "tag": "0001_silent_reaper",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1779808075687,
+      "tag": "0002_ambitious_quicksilver",
+      "breakpoints": true
+    }
+  ]
+}

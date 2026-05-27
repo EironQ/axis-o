@@ -1,0 +1,18 @@
+{
+  "name": "axis-o",
+  "private": true,
+  "version": "2.0.0",
+  "scripts": {
+    "dev": "pnpm --filter @axis-o/client dev",
+    "dev:server": "pnpm --filter @axis-o/server dev",
+    "build": "pnpm -r build",
+    "build:client": "pnpm --filter @axis-o/client build",
+    "build:server": "pnpm --filter @axis-o/server build",
+    "check": "pnpm -r check",
+    "lint": "pnpm -r lint",
+    "db:generate": "pnpm --filter @axis-o/server db:generate",
+    "db:push": "pnpm --filter @axis-o/server db:push",
+    "db:migrate": "pnpm --filter @axis-o/server db:migrate",
+    "db:studio": "pnpm --filter @axis-o/server db:studio"
+  }
+}

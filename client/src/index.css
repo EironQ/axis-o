@@ -1,0 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  line-height: 1.7;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #FAF7F2;
+  color: #3C2415;
+  overflow-x: hidden;
+}
+
+::selection {
+  background-color: #C89460;
+  color: #FAF7F2;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F5F0E8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C89460;
+  border-radius: 3px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-slide-in {
+  animation: slideInFromTop 0.3s ease-out forwards;
+}
+
+/* 自定义动画初始状态 */
+.animate-fade-in,
+.animate-fade-in-delay,
+.animate-slide-up,
+.animate-slide-up-delay,
+.animate-slide-up-delay-2 {
+  opacity: 0;
+}
+
+.animate-slide-up,
+.animate-slide-up-delay,
+.animate-slide-up-delay-2 {
+  transform: translateY(20px);
+}
+
+.animate-bounce-in {
+  opacity: 0;
+  transform: scale(0);
+}
+
+/* Hide browser auto-fill security warning in Stripe Payment Element */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 30px #FAF7F2 inset !important;
+}
+
+/* Hide Stripe security warning banner */
+.stripe-el-banner,
+.stripe-security-banner,
+[data-stripe-banner] {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  opacity: 0 !important;
+}
+
+/* Additional styles to hide warning messages */
+div[style*="security"],
+div[style*="autofill"],
+div[style*="安全"],
+span[style*="安全"],
+div[role="alert"] {
+  display: none !important;
+}
