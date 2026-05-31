@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '@/services/auth'
 import { useSettings } from '@/context/SettingsContext'
+import { useLanguage, useTranslation } from '@/i18n'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
+  const { lang } = useLanguage()
+  const { t } = useTranslation()
   const { store } = useSettings()
   const [formData, setFormData] = useState({
     firstName: '',
@@ -25,7 +28,7 @@ export default function RegisterPage() {
       }, 1000)
       return () => clearTimeout(timer)
     } else if (success && countdown === 0) {
-      navigate('/login')
+      navigate(`/${lang}/login`)
     }
   }, [success, countdown, navigate])
 
@@ -44,13 +47,13 @@ export default function RegisterPage() {
     setCountdown(3)
 
     if (formData.password !== formData.confirmPassword) {
-      setError('两次输入的密码不一致')
+      setError(lang === 'zh' ? '两次输入的密码不一致' : 'Passwords do not match')
       setIsLoading(false)
       return
     }
 
     if (formData.password.length < 8) {
-      setError('密码至少需要8个字符')
+      setError(lang === 'zh' ? '密码至少需要8个字符' : 'Password must be at least 8 characters')
       setIsLoading(false)
       return
     }
@@ -66,10 +69,10 @@ export default function RegisterPage() {
       if (response.success && response.data) {
         setSuccess(true)
       } else {
-        setError(response.error?.message || '注册失败')
+        setError(response.error?.message || (lang === 'zh' ? '注册失败' : 'Registration failed'))
       }
     } catch (err) {
-      setError('网络错误，请稍后重试')
+      setError(lang === 'zh' ? '网络错误，请稍后重试' : 'Network error, please try again later')
     } finally {
       setIsLoading(false)
     }
@@ -89,16 +92,16 @@ export default function RegisterPage() {
           </div>
           
           <h2 className="text-3xl font-['Playfair_Display'] text-[#3C2415] mb-3 animate-slide-up">
-            注册成功！
+            {lang === 'zh' ? '注册成功！' : 'Registration Successful!'}
           </h2>
           
           <p className="text-[#3C2415]/60 mb-6 animate-slide-up-delay">
-            欢迎加入 {store.store_name} 家族
+            {lang === 'zh' ? '欢迎加入' : 'Welcome to'} {store.store_name} {lang === 'zh' ? '家族' : ''}
           </p>
 
           <div className="inline-flex items-center gap-3 px-6 py-3 bg-[#F5F0E8] rounded-full animate-slide-up-delay-2">
             <span className="text-sm text-[#3C2415]/60">
-              将在 <span className="font-medium text-[#C89460] text-lg">{countdown}</span> 秒后跳转
+              {lang === 'zh' ? '将在' : 'Redirecting in'} <span className="font-medium text-[#C89460] text-lg">{countdown}</span> {lang === 'zh' ? '秒后跳转' : 'seconds'}
             </span>
             <div className="flex gap-1">
               {[0, 1, 2].map((i) => (
@@ -113,11 +116,11 @@ export default function RegisterPage() {
           </div>
 
           <p className="mt-6 text-sm text-[#3C2415]/40 animate-fade-in-delay">
-            或 <button
-              onClick={() => navigate('/login')}
+            {lang === 'zh' ? '或' : 'Or'} <button
+              onClick={() => navigate(`/${lang}/login`)}
               className="text-[#C89460] hover:underline hover:text-[#8B6914] transition-colors"
             >
-              立即登录
+              {lang === 'zh' ? '立即登录' : 'Sign In Now'}
             </button>
           </p>
         </div>
@@ -133,7 +136,7 @@ export default function RegisterPage() {
             {store.store_name}
           </p>
           <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">
-            创建账户
+            {lang === 'zh' ? '创建账户' : 'Create Account'}
           </h1>
         </div>
       </div>
@@ -143,7 +146,7 @@ export default function RegisterPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="firstName" className="block text-sm font-medium text-[#3C2415] mb-2">
-                名字
+                {lang === 'zh' ? '名字' : 'First Name'}
               </label>
               <input
                 type="text"
@@ -152,12 +155,12 @@ export default function RegisterPage() {
                 onChange={handleChange}
                 required
                 className="w-full px-4 py-3 border border-[#E5DDD3] bg-white text-[#3C2415] focus:outline-none focus:border-[#C89460] transition-colors"
-                placeholder="名字"
+                placeholder={lang === 'zh' ? '名字' : 'First Name'}
               />
             </div>
             <div>
               <label htmlFor="lastName" className="block text-sm font-medium text-[#3C2415] mb-2">
-                姓氏
+                {lang === 'zh' ? '姓氏' : 'Last Name'}
               </label>
               <input
                 type="text"
@@ -166,14 +169,14 @@ export default function RegisterPage() {
                 onChange={handleChange}
                 required
                 className="w-full px-4 py-3 border border-[#E5DDD3] bg-white text-[#3C2415] focus:outline-none focus:border-[#C89460] transition-colors"
-                placeholder="姓氏"
+                placeholder={lang === 'zh' ? '姓氏' : 'Last Name'}
               />
             </div>
           </div>
 
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-[#3C2415] mb-2">
-              邮箱地址
+              {lang === 'zh' ? '邮箱地址' : 'Email Address'}
             </label>
             <input
               type="email"
@@ -188,7 +191,7 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-[#3C2415] mb-2">
-              密码
+              {lang === 'zh' ? '密码' : 'Password'}
             </label>
             <input
               type="password"
@@ -197,13 +200,13 @@ export default function RegisterPage() {
               onChange={handleChange}
               required
               className="w-full px-4 py-3 border border-[#E5DDD3] bg-white text-[#3C2415] focus:outline-none focus:border-[#C89460] transition-colors"
-              placeholder="至少8个字符"
+              placeholder={lang === 'zh' ? '至少8个字符' : 'At least 8 characters'}
             />
           </div>
 
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-[#3C2415] mb-2">
-              确认密码
+              {lang === 'zh' ? '确认密码' : 'Confirm Password'}
             </label>
             <input
               type="password"
@@ -212,7 +215,7 @@ export default function RegisterPage() {
               onChange={handleChange}
               required
               className="w-full px-4 py-3 border border-[#E5DDD3] bg-white text-[#3C2415] focus:outline-none focus:border-[#C89460] transition-colors"
-              placeholder="再次输入密码"
+              placeholder={lang === 'zh' ? '再次输入密码' : 'Re-enter password'}
             />
           </div>
 
@@ -233,17 +236,17 @@ export default function RegisterPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                注册中...
+                {lang === 'zh' ? '注册中...' : 'Registering...'}
               </span>
             ) : (
-              '创建账户'
+              lang === 'zh' ? '创建账户' : 'Create Account'
             )}
           </button>
 
           <p className="text-center text-sm text-[#3C2415]/60">
-            已有账号？{' '}
-            <Link to="/login" className="text-[#C89460] hover:underline transition-colors">
-              立即登录
+            {lang === 'zh' ? '已有账号？' : 'Already have an account? '}
+            <Link to={`/${lang}/login`} className="text-[#C89460] hover:underline transition-colors">
+              {lang === 'zh' ? '立即登录' : 'Sign In'}
             </Link>
           </p>
         </form>

@@ -2,6 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
 
 import { mockAddresses, MockAddress } from '@/data/mockData'
+import { handleAuthError, createAuthHeaders } from './authHelper'
 
 export interface Address {
   id: string
@@ -58,20 +59,27 @@ export interface ApiResponse<T> {
   }
 }
 
-function getAuthHeaders() {
-  const token = localStorage.getItem('accessToken')
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  }
-}
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const res = await fetch(url, {
+    ...options,
+    headers: createAuthHeaders(),
+  })
 
-function handleAuthError(res: Response) {
   if (res.status === 401) {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    window.location.href = '/login'
+    const { refreshAccessToken } = await import('./authHelper')
+    const newToken = await refreshAccessToken()
+    if (newToken) {
+      return fetch(url, {
+        ...options,
+        headers: createAuthHeaders(),
+      })
+    } else {
+      handleAuthError()
+      throw new Error('Unauthorized')
+    }
   }
+
+  return res
 }
 
 function mockAddrToAddress(addr: MockAddress): Address {
@@ -120,11 +128,7 @@ export const addressService = {
       const addresses = mockAddresses.map(mockAddrToAddress)
       return { success: true, data: addresses }
     }
-    const res = await fetch(`${API_BASE_URL}/addresses`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    })
-    handleAuthError(res)
+    const res = await fetchWithAuth(`${API_BASE_URL}/addresses`)
     const json = await res.json()
     if (json.success && json.data) {
       return { success: true, data: json.data.addresses || json.data }
@@ -138,11 +142,7 @@ export const addressService = {
       if (!addr) return { success: false, error: { code: 'NOT_FOUND', message: 'Address not found' } }
       return { success: true, data: mockAddrToAddress(addr) }
     }
-    const res = await fetch(`${API_BASE_URL}/addresses/${id}`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    })
-    handleAuthError(res)
+    const res = await fetchWithAuth(`${API_BASE_URL}/addresses/${id}`)
     return res.json()
   },
 
@@ -151,12 +151,10 @@ export const addressService = {
       const address = createMockAddress(data)
       return { success: true, data: address }
     }
-    const res = await fetch(`${API_BASE_URL}/addresses`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/addresses`, {
       method: 'POST',
-      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     })
-    handleAuthError(res)
     return res.json()
   },
 
@@ -196,12 +194,10 @@ export const addressService = {
     const clean = Object.fromEntries(
       Object.entries(data).filter(([, v]) => v != null && v !== '')
     )
-    const res = await fetch(`${API_BASE_URL}/addresses/${id}`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/addresses/${id}`, {
       method: 'PUT',
-      headers: getAuthHeaders(),
       body: JSON.stringify(clean),
     })
-    handleAuthError(res)
     return res.json()
   },
 
@@ -212,11 +208,9 @@ export const addressService = {
       mockAddresses.splice(index, 1)
       return { success: true, data: { message: 'Address deleted' } }
     }
-    const res = await fetch(`${API_BASE_URL}/addresses/${id}`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/addresses/${id}`, {
       method: 'DELETE',
-      headers: getAuthHeaders(),
     })
-    handleAuthError(res)
     return res.json()
   },
 
@@ -228,11 +222,9 @@ export const addressService = {
       addr.isDefault = true
       return { success: true, data: mockAddrToAddress(addr) }
     }
-    const res = await fetch(`${API_BASE_URL}/addresses/${id}/default`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/addresses/${id}/default`, {
       method: 'PUT',
-      headers: getAuthHeaders(),
     })
-    handleAuthError(res)
     return res.json()
   },
 }

@@ -18,8 +18,7 @@ export const CategoryController = {
         conditions.push(
           or(
             like(categories.nameEn, `%${search}%`),
-            like(categories.nameZh, `%${search}%`),
-            like(categories.slug, `%${search}%`)
+            like(categories.nameZh, `%${search}%`)
           )
         )
       }
@@ -29,8 +28,6 @@ export const CategoryController = {
           id: categories.id,
           nameEn: categories.nameEn,
           nameZh: categories.nameZh,
-          slug: categories.slug,
-          imageUrl: categories.imageUrl,
           sortOrder: categories.sortOrder,
           isActive: categories.isActive,
           createdAt: categories.createdAt,
@@ -70,8 +67,6 @@ export const CategoryController = {
           id: categories.id,
           nameEn: categories.nameEn,
           nameZh: categories.nameZh,
-          slug: categories.slug,
-          imageUrl: categories.imageUrl,
           sortOrder: categories.sortOrder,
           isActive: categories.isActive,
           createdAt: categories.createdAt,
@@ -108,16 +103,10 @@ export const CategoryController = {
 
   create: async (req: Request, res: Response) => {
     try {
-      const { nameEn, nameZh, slug, imageUrl, sortOrder = 0, isActive = 1 } = req.body
+      const { nameEn, nameZh, sortOrder = 0, isActive = 1 } = req.body
 
-      if (!nameEn || !nameZh || !slug) {
-        res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Name and slug are required' } })
-        return
-      }
-
-      const slugExists = await db.select({ id: categories.id }).from(categories).where(eq(categories.slug, slug)).limit(1)
-      if (slugExists.length > 0) {
-        res.status(400).json({ success: false, error: { code: 'DUPLICATE_SLUG', message: 'Slug already exists' } })
+      if (!nameEn || !nameZh) {
+        res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'Name is required' } })
         return
       }
 
@@ -126,9 +115,7 @@ export const CategoryController = {
         id: categoryId,
         nameEn,
         nameZh,
-        slug,
         parentId: null,
-        imageUrl,
         sortOrder,
         isActive,
         createdAt: new Date(),
@@ -140,8 +127,6 @@ export const CategoryController = {
           id: categories.id,
           nameEn: categories.nameEn,
           nameZh: categories.nameZh,
-          slug: categories.slug,
-          imageUrl: categories.imageUrl,
           sortOrder: categories.sortOrder,
           isActive: categories.isActive,
           createdAt: categories.createdAt,
@@ -164,7 +149,7 @@ export const CategoryController = {
   update: async (req: Request, res: Response) => {
     try {
       const categoryId = req.params.id as string
-      const { nameEn, nameZh, slug, imageUrl, sortOrder, isActive } = req.body
+      const { nameEn, nameZh, sortOrder, isActive } = req.body
 
       const categoryExists = await db.select({ id: categories.id }).from(categories).where(eq(categories.id, categoryId)).limit(1)
       if (categoryExists.length === 0) {
@@ -172,23 +157,9 @@ export const CategoryController = {
         return
       }
 
-      if (slug) {
-        const slugExists = await db
-          .select({ id: categories.id })
-          .from(categories)
-          .where(and(eq(categories.slug, slug), not(eq(categories.id, categoryId))))
-          .limit(1)
-        if (slugExists.length > 0) {
-          res.status(400).json({ success: false, error: { code: 'DUPLICATE_SLUG', message: 'Slug already exists' } })
-          return
-        }
-      }
-
       const updates: any = { updatedAt: new Date() }
       if (nameEn !== undefined) updates.nameEn = nameEn
       if (nameZh !== undefined) updates.nameZh = nameZh
-      if (slug !== undefined) updates.slug = slug
-      if (imageUrl !== undefined) updates.imageUrl = imageUrl
       if (sortOrder !== undefined) updates.sortOrder = sortOrder
       if (isActive !== undefined) updates.isActive = isActive
 
@@ -199,8 +170,6 @@ export const CategoryController = {
           id: categories.id,
           nameEn: categories.nameEn,
           nameZh: categories.nameZh,
-          slug: categories.slug,
-          imageUrl: categories.imageUrl,
           sortOrder: categories.sortOrder,
           isActive: categories.isActive,
           createdAt: categories.createdAt,

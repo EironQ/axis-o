@@ -14,17 +14,18 @@ import {
 } from 'lucide-react'
 import { orderService, Order } from '@/services/order'
 import { useSettings } from '@/context/SettingsContext'
+import { useLanguage, useTranslation } from '@/i18n'
 import Dialog from '@/components/ui/Dialog'
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-  pending: { label: '待付款', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  paid: { label: '已付款', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  processing: { label: '处理中', color: 'bg-purple-100 text-purple-700 border-purple-200' },
-  shipped: { label: '已发货', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-  delivered: { label: '已送达', color: 'bg-green-100 text-green-700 border-green-200' },
-  cancelled: { label: '已取消', color: 'bg-gray-100 text-gray-600 border-gray-200' },
-  refunded: { label: '已退款', color: 'bg-red-100 text-red-700 border-red-200' },
-}
+const statusConfig = (t: (key: string) => string): Record<string, { label: string; color: string }> => ({
+  pending: { label: t('order.status.pending'), color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  paid: { label: t('order.status.paid'), color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  processing: { label: t('order.status.processing'), color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  shipped: { label: t('order.status.shipped'), color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  delivered: { label: t('order.status.delivered'), color: 'bg-green-100 text-green-700 border-green-200' },
+  cancelled: { label: t('order.status.cancelled'), color: 'bg-gray-100 text-gray-600 border-gray-200' },
+  refunded: { label: t('order.status.refunded'), color: 'bg-red-100 text-red-700 border-red-200' },
+})
 
 const formatPrice = (price: number) => {
   return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
@@ -32,6 +33,8 @@ const formatPrice = (price: number) => {
 
 export default function OrderListPage() {
   const navigate = useNavigate()
+  const { lang } = useLanguage()
+  const { t } = useTranslation()
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -39,10 +42,12 @@ export default function OrderListPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null)
 
+  const currentStatusConfig = statusConfig(t)
+
   useEffect(() => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
-      navigate('/login')
+      navigate(`/${lang}/login`)
       return
     }
     loadOrders()
@@ -54,10 +59,10 @@ export default function OrderListPage() {
       if (response.success && response.data) {
         setOrders(response.data)
       } else {
-        setMessage({ type: 'error', text: response.error?.message || '加载订单失败' })
+        setMessage({ type: 'error', text: response.error?.message || t('order.loadOrdersFailed') })
       }
     } catch {
-      setMessage({ type: 'error', text: '网络错误，请稍后重试' })
+      setMessage({ type: 'error', text: t('order.errors.networkError') })
     } finally {
       setIsLoading(false)
     }
@@ -71,12 +76,12 @@ export default function OrderListPage() {
       const response = await orderService.cancel(orderId)
       if (response.success) {
         setOrders(orders.map((o) => (o.id === orderId ? { ...o, status: 'cancelled' as const } : o)))
-        setMessage({ type: 'success', text: '订单已取消' })
+        setMessage({ type: 'success', text: t('order.success.orderCancelled') })
       } else {
-        setMessage({ type: 'error', text: response.error?.message || '取消失败' })
+        setMessage({ type: 'error', text: response.error?.message || t('order.errors.cancelFailed') })
       }
     } catch {
-      setMessage({ type: 'error', text: '网络错误，请稍后重试' })
+      setMessage({ type: 'error', text: t('order.errors.networkError') })
     } finally {
       setCancellingId(null)
     }
@@ -108,7 +113,7 @@ export default function OrderListPage() {
       <main className="min-h-screen bg-[#FAF7F2] flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-[#C89460] mx-auto" />
-          <p className="mt-4 text-[#3C2415]/60">加载中...</p>
+          <p className="mt-4 text-[#3C2415]/60">{t('common.loading')}</p>
         </div>
       </main>
     )
@@ -116,23 +121,23 @@ export default function OrderListPage() {
 
   return (
     <main className="min-h-screen bg-[#FAF7F2]">
-      <div className="pt-24 pb-16 bg-[#F5F0E8]">
-        <div className="mx-auto max-w-[1200px] px-8">
+      <div className="pt-20 pb-8 md:pt-24 md:pb-16 bg-[#F5F0E8]">
+        <div className="mx-auto max-w-[1200px] px-4 md:px-8">
           <div className="max-w-[960px] mx-auto">
             <Link
-              to="/profile"
-              className="inline-flex items-center gap-2 text-sm text-[#C89460] hover:text-[#3C2415] transition-colors mb-8"
+              to={`/${lang}/profile`}
+              className="inline-flex items-center gap-2 text-sm text-[#C89460] hover:text-[#3C2415] transition-colors mb-4 md:mb-8"
             >
               <ArrowLeft size={16} />
-              返回个人中心
+              {t('common.back')}
             </Link>
-            <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">AXIS O</p>
-            <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">我的订单</h1>
+            <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-2 md:mb-4">AXIS O</p>
+            <h1 className="font-['Playfair_Display'] text-2xl md:text-4xl text-[#3C2415]">{t('order.myOrders')}</h1>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1200px] px-8 py-12">
+      <div className="mx-auto max-w-[1200px] px-4 md:px-8 py-6 md:py-12">
         <div className="max-w-[960px] mx-auto">
           {message && (
             <div
@@ -154,13 +159,13 @@ export default function OrderListPage() {
           {orders.length === 0 ? (
             <div className="bg-white border border-[#E5DDD3] p-16 text-center">
               <PackageOpen className="w-16 h-16 text-[#C89460]/30 mx-auto mb-4" />
-              <p className="text-[#3C2415]/60 mb-2">暂无订单</p>
-              <p className="text-sm text-[#3C2415]/40 mb-6">去挑选您心仪的包包吧</p>
+              <p className="text-[#3C2415]/60 mb-2">{t('cart.empty')}</p>
+              <p className="text-sm text-[#3C2415]/40 mb-6">{t('cart.emptyHint')}</p>
               <Link
-                to="/products"
+                to={`/${lang}/products`}
                 className="inline-flex items-center px-6 py-2.5 bg-[#3C2415] text-white text-sm font-medium hover:bg-[#2A1A0F] transition-colors"
               >
-                探索产品
+                {t('cart.exploreProducts')}
               </Link>
             </div>
           ) : (
@@ -170,58 +175,60 @@ export default function OrderListPage() {
                   key={order.id}
                   className="bg-white border border-[#E5DDD3] overflow-hidden transition-shadow hover:shadow-sm"
                 >
-                  <div className="px-6 py-4 border-b border-[#E5DDD3] flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs text-[#3C2415]/50">订单号</span>
-                      <span className="text-sm font-medium text-[#3C2415]">{order.orderNumber}</span>
-                      <span className="text-xs text-[#3C2415]/30">|</span>
+                  <div className="px-4 py-3 md:px-6 md:py-4 border-b border-[#E5DDD3] flex flex-wrap items-center justify-between gap-2 md:gap-3">
+                    <div className="flex flex-wrap items-center gap-2 md:gap-4">
+                      <div>
+                        <span className="text-xs text-[#3C2415]/50">{t('order.orderNumber')}</span>
+                        <p className="text-sm font-medium text-[#3C2415]">{order.orderNumber}</p>
+                      </div>
+                      <span className="text-xs text-[#3C2415]/30 hidden sm:block">|</span>
                       <span className="text-xs text-[#3C2415]/50">{formatDate(order.createdAt)}</span>
                     </div>
                     <span
-                      className={`px-3 py-1 text-xs font-medium border rounded-full ${statusConfig[order.status]?.color || 'bg-gray-100 text-gray-600'}`}
+                      className={`px-2 py-0.5 md:px-3 md:py-1 text-xs font-medium border rounded-full ${currentStatusConfig[order.status]?.color || 'bg-gray-100 text-gray-600'}`}
                     >
-                      {statusConfig[order.status]?.label || order.status}
+                      {currentStatusConfig[order.status]?.label || order.status}
                     </span>
                   </div>
 
-                  <div className="px-6 py-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                  <div className="px-4 py-3 md:px-6 md:py-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 text-sm">
                       <div>
-                        <span className="text-[#3C2415]/40">订单金额</span>
-                        <p className="mt-1 text-[#3C2415] font-medium">
+                        <span className="text-[#3C2415]/40">{t('order.total')}</span>
+                        <p className="mt-0.5 md:mt-1 text-[#3C2415] font-medium">
                           {formatPrice(order.total)}
                         </p>
                       </div>
                       <div>
-                        <span className="text-[#3C2415]/40">运费</span>
-                        <p className="mt-1 text-[#3C2415]">
-                          {order.shippingCost > 0 ? formatPrice(order.shippingCost) : '免运费'}
+                        <span className="text-[#3C2415]/40">{t('order.shipping')}</span>
+                        <p className="mt-0.5 md:mt-1 text-[#3C2415]">
+                          {order.shippingCost > 0 ? formatPrice(order.shippingCost) : t('order.freeShipping')}
                         </p>
                       </div>
                       <div>
-                        <span className="text-[#3C2415]/40">配送方式</span>
-                        <p className="mt-1 text-[#3C2415]">{order.shippingMethod === 'express' ? '加急配送' : order.shippingMethod === 'standard' ? '标准配送' : (order.shippingMethod || '标准配送')}</p>
+                        <span className="text-[#3C2415]/40">{t('order.shippingMethod')}</span>
+                        <p className="mt-0.5 md:mt-1 text-[#3C2415]">{order.shippingMethod === 'express' ? t('order.expressShipping') : order.shippingMethod === 'standard' ? t('order.standardShipping') : (order.shippingMethod || t('order.standardShipping'))}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="px-6 py-3 border-t border-[#E5DDD3] flex flex-wrap items-center gap-2">
+                  <div className="px-4 py-2.5 md:px-6 md:py-3 border-t border-[#E5DDD3] flex flex-wrap items-center gap-2">
                     <Link
-                      to={`/orders/${order.id}`}
+                      to={`/${lang}/orders/${order.id}`}
                       className="px-4 py-2 text-sm border border-[#E5DDD3] text-[#3C2415] hover:bg-[#FAF7F2] transition-colors flex items-center gap-2"
                     >
                       <Package size={14} />
-                      查看详情
+                      {t('order.orderDetails')}
                       <ChevronRight size={14} />
                     </Link>
 
                     {order.status === 'pending' && (
                       <Link
-                        to={`/checkout?orderId=${order.id}`}
+                        to={`/${lang}/checkout?orderId=${order.id}`}
                         className="px-4 py-2 text-sm bg-[#3C2415] text-white hover:bg-[#2A1A0F] transition-colors flex items-center gap-2"
                       >
                         <CreditCard size={14} />
-                        去付款
+                        {t('order.actions.payNow')}
                       </Link>
                     )}
 
@@ -232,14 +239,14 @@ export default function OrderListPage() {
                         className="px-4 py-2 text-sm border border-red-200 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2 disabled:opacity-50"
                       >
                         <Trash2 size={14} />
-                        {cancellingId === order.id ? '取消中...' : '取消订单'}
+                        {cancellingId === order.id ? t('order.refreshing') : t('order.actions.cancelOrder')}
                       </button>
                     )}
 
                     {order.status === 'shipped' && (
                       <button className="px-4 py-2 text-sm border border-[#E5DDD3] text-[#3C2415] hover:bg-[#FAF7F2] transition-colors flex items-center gap-2">
                         <Truck size={14} />
-                        确认收货
+                        {t('order.actions.confirmReceipt')}
                       </button>
                     )}
                   </div>
@@ -253,10 +260,10 @@ export default function OrderListPage() {
       <Dialog
         isOpen={dialogOpen}
         onClose={handleCloseDialog}
-        title="取消订单"
-        message={`确定要取消订单 ${orderToCancel?.orderNumber} 吗？取消后将无法恢复。`}
-        confirmText="确认取消"
-        cancelText="返回"
+        title={t('order.cancelDialog.title')}
+        message={t('order.cancelDialog.message', { orderNumber: orderToCancel?.orderNumber || '' })}
+        confirmText={t('order.cancelDialog.confirm')}
+        cancelText={t('common.back')}
         confirmColor="danger"
         onConfirm={() => {
           if (orderToCancel) {

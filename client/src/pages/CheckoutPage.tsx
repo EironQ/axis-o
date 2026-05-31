@@ -1,45 +1,48 @@
 import { useState, useEffect, Component } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, MapPin, CreditCard, Truck, Gift } from 'lucide-react'
+import { ArrowLeft, MapPin, CreditCard, Truck, Gift, Globe, Wallet } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
+import { useSettings } from '@/context/SettingsContext'
+import { useTranslation, useLanguage } from '@/i18n'
 import { orderApi, addressApi, paymentApi, CreateOrderRequest, UserAddress, PaymentIntentResponse } from '@/services/api'
 import Button from '@/components/ui/Button'
 import StripePaymentForm from '@/components/checkout/StripePaymentForm'
 import PayPalPaymentForm from '@/components/checkout/PayPalPaymentForm'
-import AlipayPaymentForm from '@/components/checkout/AlipayPaymentForm'
+import AirwallexPaymentForm from '@/components/checkout/AirwallexPaymentForm'
 
-class CheckoutErrorBoundary extends Component<{ children: React.ReactNode; onBack: () => void }, { hasError: boolean; errorMessage: string }> {
-  constructor(props: { children: React.ReactNode; onBack: () => void }) {
+class CheckoutErrorBoundary extends Component<
+  { children: React.ReactNode; onBack: () => void; onRetry?: () => void; t: (key: string, params?: Record<string, string | number>) => string },
+  { hasError: boolean; errorMessage: string }
+> {
+  constructor(props: { children: React.ReactNode; onBack: () => void; onRetry?: () => void; t: (key: string, params?: Record<string, string | number>) => string }) {
     super(props)
     this.state = { hasError: false, errorMessage: '' }
   }
 
   static getDerivedStateFromError(error: Error) {
-    return { hasError: true, errorMessage: error.message || '页面加载失败' }
+    return { hasError: true, errorMessage: error.message || 'Page failed to load' }
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <main className="min-h-screen bg-[#FAF7F2]">
-          <div className="pt-24 pb-16 bg-[#F5F0E8]">
-            <div className="mx-auto max-w-[1440px] px-8 text-center">
-              <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">支付</h1>
-            </div>
+        <div className="bg-white border border-red-200 rounded-lg p-6 text-center">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
           </div>
-          <div className="mx-auto max-w-[480px] px-8 py-12 text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-            </div>
-            <p className="text-sm text-red-600 mb-4">{this.state.errorMessage}</p>
-            <div className="flex gap-3 justify-center">
-              <Button variant="outline" onClick={this.props.onBack}>返回</Button>
-              <Button onClick={() => this.setState({ hasError: false, errorMessage: '' })}>重试</Button>
-            </div>
+          <p className="text-sm text-red-600 mb-2">{this.props.t('checkout.paymentLoadError')}</p>
+          <p className="text-xs text-red-400 mb-4">{this.state.errorMessage}</p>
+          <div className="flex gap-3 justify-center">
+            <Button variant="outline" size="sm" onClick={this.props.onBack}>{this.props.t('checkout.backToOrder')}</Button>
+            {this.props.onRetry && (
+              <Button variant="primary" size="sm" onClick={() => { this.setState({ hasError: false, errorMessage: '' }); this.props.onRetry?.() }}>
+                {this.props.t('common.retry')}
+              </Button>
+            )}
           </div>
-        </main>
+        </div>
       )
     }
     return this.props.children
@@ -53,11 +56,14 @@ export default function CheckoutPage() {
   const [searchParams] = useSearchParams()
   const existingOrderId = searchParams.get('orderId')
   const { items, totalPrice, fetchCart, isLoading: cartLoading } = useCartStore()
+  const { store } = useSettings()
+  const { t } = useTranslation()
+  const { lang } = useLanguage()
   const [addresses, setAddresses] = useState<UserAddress[]>([])
   const [selectedShippingAddress, setSelectedShippingAddress] = useState<string>('')
   const [selectedBillingAddress, setSelectedBillingAddress] = useState<string>('')
   const [shippingMethod, setShippingMethod] = useState<string>('standard')
-  const [paymentProvider, setPaymentProvider] = useState<'stripe' | 'paypal' | 'alipay'>('stripe')
+  const [paymentProvider, setPaymentProvider] = useState<'paypal' | 'airwallex' | 'lianlianpay'>('paypal')
   const [discountCode, setDiscountCode] = useState<string>('')
   const [notes, setNotes] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -71,7 +77,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
-      navigate('/login', { replace: true })
+      navigate(`/${lang}/login`, { replace: true })
       return
     }
 
@@ -88,6 +94,14 @@ export default function CheckoutPage() {
     initData()
   }, [existingOrderId])
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [])
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [checkoutPhase])
+
   const [orderItems, setOrderItems] = useState<any[]>([])
 
   const loadExistingOrder = async (orderId: string) => {
@@ -96,7 +110,7 @@ export default function CheckoutPage() {
     try {
       const response = await orderApi.getById(orderId)
       if (!response.success || !response.data) {
-        setError('订单加载失败，请确认订单号正确')
+        setError(t('checkout.orderLoadFail'))
         setIsLoadingOrder(false)
         return
       }
@@ -105,7 +119,7 @@ export default function CheckoutPage() {
         orderId: order.id,
         orderNumber: order.orderNumber,
         total: Number(order.total || 0),
-        currency: order.currency || 'CNY',
+        currency: order.currency || 'USD',
         status: order.status,
       }
       setOrderResult(orderInfo)
@@ -129,7 +143,7 @@ export default function CheckoutPage() {
       }
 
       if (order.status === 'cancelled' || order.status === 'refunded') {
-        setError(`订单已${order.status === 'cancelled' ? '取消' : '退款'}，无法继续支付`)
+        setError(t('checkout.orderCancelled'))
         setIsLoadingOrder(false)
         return
       }
@@ -146,7 +160,7 @@ export default function CheckoutPage() {
                 orderId: refreshedOrder.data.id,
                 orderNumber: refreshedOrder.data.orderNumber,
                 total: Number(refreshedOrder.data.total || 0),
-                currency: refreshedOrder.data.currency || 'CNY',
+                currency: refreshedOrder.data.currency || 'USD',
                 status: refreshedOrder.data.status,
               })
               setCheckoutPhase('success')
@@ -165,7 +179,7 @@ export default function CheckoutPage() {
         setCheckoutPhase('review')
       }
     } catch (err: any) {
-      setError(err?.message || '订单加载失败，请稍后重试')
+      setError(err?.message || t('checkout.orderLoadError'))
     } finally {
       setIsLoadingOrder(false)
     }
@@ -188,16 +202,16 @@ export default function CheckoutPage() {
   }
 
   const shippingMethods = [
-    { value: 'standard', label: '标准配送', desc: '3-5个工作日送达', price: 0 },
-    { value: 'express', label: '加急配送', desc: '1-2个工作日送达', price: 50 },
+    { value: 'standard', label: t('checkout.standard'), desc: t('checkout.standardDesc'), price: 0 },
+    { value: 'express', label: t('checkout.express'), desc: t('checkout.expressDesc'), price: (() => { const val = parseFloat(store.shipping_fee); return isNaN(val) ? 50 : val })() },
   ]
 
   const validItems = items.filter(item => item.quantity > 0)
   const validTotalPrice = validItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const selectedMethod = shippingMethods.find(m => m.value === shippingMethod)
   const shippingCost = selectedMethod?.price ?? 50
-  const taxAmount = validTotalPrice * 0.08
-  const orderTotal = parseFloat((validTotalPrice + shippingCost + taxAmount).toFixed(2))
+  const taxAmount = 0
+  const orderTotal = parseFloat((validTotalPrice + shippingCost).toFixed(2))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -208,33 +222,33 @@ export default function CheckoutPage() {
 
     try {
       if (!selectedShippingAddress) {
-        setError('请选择配送地址')
+        setError(t('checkout.selectShippingAddress'))
         setIsSubmitting(false)
         return
       }
 
       if (!selectedBillingAddress) {
-        setError('请选择账单地址，或勾选"与配送地址相同"')
+        setError(t('checkout.selectBillingAddress'))
         setIsSubmitting(false)
         return
       }
 
       if (addresses.length === 0) {
-        setError('请先添加收货地址')
+        setError(t('checkout.addAddressFirst'))
         setIsSubmitting(false)
         return
       }
 
       const shippingAddressExists = addresses.some(addr => addr.id === selectedShippingAddress)
       if (!shippingAddressExists) {
-        setError('所选配送地址不存在，请重新选择')
+        setError(t('checkout.addressNotFound'))
         setIsSubmitting(false)
         return
       }
 
       const billingAddressExists = addresses.some(addr => addr.id === selectedBillingAddress)
       if (!billingAddressExists) {
-        setError('所选账单地址不存在，请重新选择')
+        setError(t('checkout.billingAddressNotFound'))
         setIsSubmitting(false)
         return
       }
@@ -242,7 +256,7 @@ export default function CheckoutPage() {
       if (existingOrderId && orderResult) {
         try {
           const paymentResponse = await paymentApi.createIntent(orderResult.orderId, paymentProvider)
-          if (paymentResponse.success && (paymentResponse.data?.clientSecret || paymentResponse.data?.paypalOrderId || paymentResponse.data?.alipayRedirectUrl)) {
+          if (paymentResponse.success && (paymentResponse.data?.clientSecret || paymentResponse.data?.paypalOrderId || paymentResponse.data?.airwallexRedirectUrl)) {
             if (paymentResponse.data?.alreadyPaid) {
               setCheckoutPhase('success')
               setIsSubmitting(false)
@@ -251,17 +265,17 @@ export default function CheckoutPage() {
             setPaymentData(paymentResponse.data)
             setCheckoutPhase('payment')
           } else {
-            setError(paymentResponse.error?.message || '获取支付信息失败，请重试')
+            setError('Failed to get payment info, please retry')
           }
         } catch (paymentError: any) {
           console.error('Failed to create payment intent:', paymentError)
-          setError(paymentError?.message || '获取支付信息失败，请重试')
+          setError(paymentError?.message || 'Failed to get payment info, please retry')
           setIsSubmitting(false)
           return
         }
       } else {
         if (validItems.length === 0) {
-          setError('购物车为空，请先添加商品')
+          setError('Cart is empty, please add items first')
           setIsSubmitting(false)
           return
         }
@@ -273,7 +287,7 @@ export default function CheckoutPage() {
           paymentProvider,
           discountCode: discountCode || undefined,
           notes: notes || undefined,
-          currency: 'CNY',
+          currency: 'USD',
         }
 
         const orderResponse = await orderApi.create(orderData)
@@ -298,23 +312,23 @@ export default function CheckoutPage() {
               setPaymentData(paymentResponse.data)
               setCheckoutPhase('payment')
             } else {
-              setError('获取支付信息失败，请重试')
+              setError('Failed to get payment info, please retry')
             }
           } catch (paymentError: any) {
             console.error('Failed to create payment intent:', paymentError)
-            setError(paymentError?.message || '获取支付信息失败，请重试')
+            setError(paymentError?.message || 'Failed to get payment info, please retry')
             setIsSubmitting(false)
             return
           }
         } else {
-          setError('创建订单失败')
+          setError('Failed to create order')
         }
       }
     } catch (error: any) {
       console.error('Failed to process order:', error)
-      const message = error?.message || '处理订单失败'
+      const message = error?.message || 'Failed to process order'
       if (message === 'Session expired' || message.includes('401')) {
-        navigate('/login', { replace: true })
+        navigate(`/${lang}/login`, { replace: true })
         return
       }
       setError(message)
@@ -340,7 +354,7 @@ export default function CheckoutPage() {
 
   const handlePaymentCancel = () => {
     if (orderResult?.orderId) {
-      navigate(`/orders/${orderResult.orderId}`)
+      navigate(`/${lang}/orders/${orderResult.orderId}`)
     } else {
       setCheckoutPhase('review')
       setPaymentData(null)
@@ -357,8 +371,8 @@ export default function CheckoutPage() {
       <main className="min-h-screen bg-[#FAF7F2]">
         <div className="pt-24 pb-16 bg-[#F5F0E8]">
           <div className="mx-auto max-w-[1440px] px-8 text-center">
-            <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">订单确认</p>
-            <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">订单确认</h1>
+            <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">{t('checkout.orderConfirmation')}</p>
+            <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">{t('checkout.orderConfirmation')}</h1>
           </div>
         </div>
 
@@ -368,21 +382,21 @@ export default function CheckoutPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="font-['Playfair_Display'] text-2xl text-[#3C2415] mb-2">订单创建成功</h2>
-          <p className="text-sm text-[#3C2415]/60 mb-6">感谢您的购买，订单正在处理中</p>
+          <h2 className="font-['Playfair_Display'] text-2xl text-[#3C2415] mb-2">{t('checkout.orderCreated')}</h2>
+          <p className="text-sm text-[#3C2415]/60 mb-6">{t('checkout.thankYou')}</p>
 
           <div className="bg-white border border-[#3C2415]/10 rounded-lg p-6 mb-8">
             <div className="space-y-4">
               <div className="flex justify-between">
-                <span className="text-sm text-[#3C2415]/60">订单号</span>
+                <span className="text-sm text-[#3C2415]/60">{t('checkout.orderNumber')}</span>
                 <span className="text-sm font-medium text-[#3C2415]">{orderResult.orderNumber}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-[#3C2415]/60">订单金额</span>
+                <span className="text-sm text-[#3C2415]/60">{t('checkout.amount')}</span>
                 <span className="text-sm font-medium text-[#3C2415]">{formatPrice(orderResult.total)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-[#3C2415]/60">订单状态</span>
+                <span className="text-sm text-[#3C2415]/60">{t('checkout.status')}</span>
                 <span className="text-sm text-[#C89460]">{orderResult.status}</span>
               </div>
             </div>
@@ -391,14 +405,14 @@ export default function CheckoutPage() {
           <div className="flex gap-4 justify-center">
             <Button
               variant="outline"
-              onClick={() => navigate('/products')}
+              onClick={() => navigate(`/${lang}/products`)}
             >
-              继续购物
+              {t('cart.continueShopping')}
             </Button>
             <Button
-              onClick={() => navigate(`/orders/${orderResult.orderId}`)}
+              onClick={() => navigate(`/${lang}/orders/${orderResult.orderId}`)}
             >
-              查看订单详情
+              {t('checkout.viewOrderDetails')}
             </Button>
           </div>
         </div>
@@ -411,8 +425,8 @@ export default function CheckoutPage() {
       <main className="min-h-screen bg-[#FAF7F2]">
         <div className="pt-24 pb-16 bg-[#F5F0E8]">
           <div className="mx-auto max-w-[1440px] px-8 text-center">
-            <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">支付</p>
-            <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">完成支付</h1>
+            <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">{t('checkout.title')}</p>
+            <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">{t('checkout.completePayment')}</h1>
           </div>
         </div>
         <div className="mx-auto max-w-[480px] px-8 py-12 text-center">
@@ -423,8 +437,8 @@ export default function CheckoutPage() {
           </div>
           <p className="text-sm text-red-600 mb-4">{error}</p>
           <div className="flex gap-3 justify-center">
-            <Button variant="outline" onClick={() => navigate(-1)}>返回</Button>
-            <Button onClick={() => loadExistingOrder(existingOrderId!)}>重试</Button>
+            <Button variant="outline" onClick={() => navigate(-1)}>{t('common.back')}</Button>
+            <Button onClick={() => loadExistingOrder(existingOrderId!)}>{t('common.retry')}</Button>
           </div>
         </div>
       </main>
@@ -436,8 +450,8 @@ export default function CheckoutPage() {
       <main className="min-h-screen bg-[#FAF7F2]">
         <div className="pt-24 pb-16 bg-[#F5F0E8]">
           <div className="mx-auto max-w-[1440px] px-8 text-center">
-            <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">结账</p>
-            <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">结账</h1>
+            <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">{t('checkout.title')}</p>
+            <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">{t('checkout.title')}</h1>
           </div>
         </div>
         <div className="mx-auto max-w-[1440px] px-8 py-12">
@@ -454,17 +468,20 @@ export default function CheckoutPage() {
       <main className="min-h-screen bg-[#FAF7F2]">
         <div className="pt-24 pb-16 bg-[#F5F0E8]">
           <div className="mx-auto max-w-[1440px] px-8 text-center">
-            <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">支付</p>
-            <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">完成支付</h1>
+            <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">{t('payment.method')}</p>
+            <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">{t('checkout.completePayment')}</h1>
           </div>
         </div>
 
         <div className="mx-auto max-w-[640px] px-8 py-12">
           {paymentData ? (
-            <CheckoutErrorBoundary onBack={handlePaymentCancel}>
-              {paymentData.alipayRedirectUrl ? (
-                <AlipayPaymentForm
-                  redirectUrl={paymentData.alipayRedirectUrl}
+            <CheckoutErrorBoundary t={t} onBack={handlePaymentCancel} onRetry={() => {
+                setPaymentData(null)
+                setError(null)
+            }}>
+              {paymentData.airwallexRedirectUrl ? (
+                <AirwallexPaymentForm
+                  redirectUrl={paymentData.airwallexRedirectUrl}
                   orderId={paymentData.orderId}
                   orderNumber={orderResult.orderNumber}
                   amount={paymentData.amount || orderResult.total}
@@ -506,11 +523,11 @@ export default function CheckoutPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               </div>
-              <p className="text-sm text-[#3C2415] mb-2">支付服务加载中</p>
-              <p className="text-xs text-[#3C2415]/50 mb-6">请确认已在后台配置有效的支付密钥</p>
+              <p className="text-sm text-[#3C2415] mb-2">Loading payment service</p>
+              <p className="text-xs text-[#3C2415]/50 mb-6">Please ensure valid payment keys are configured in admin</p>
               <div className="flex gap-3 justify-center">
                 <Button variant="outline" size="sm" onClick={handlePaymentCancel}>
-                  返回订单
+                  Back to Order
                 </Button>
                 <Button
                   variant="primary"
@@ -518,21 +535,21 @@ export default function CheckoutPage() {
                   onClick={async () => {
                     try {
                       const paymentResponse = await paymentApi.createIntent(orderResult.orderId, paymentProvider)
-                      if (paymentResponse.success && (paymentResponse.data?.clientSecret || paymentResponse.data?.paypalOrderId || paymentResponse.data?.alipayRedirectUrl)) {
+                      if (paymentResponse.success && (paymentResponse.data?.clientSecret || paymentResponse.data?.paypalOrderId || paymentResponse.data?.airwallexRedirectUrl)) {
                         if (paymentResponse.data?.alreadyPaid) {
                           setCheckoutPhase('success')
                           return
                         }
                         setPaymentData(paymentResponse.data)
                       } else {
-                        setError(paymentResponse.error?.message || '获取支付信息失败，请确认已配置支付密钥')
+                        setError('Failed to get payment info, please verify payment keys')
                       }
                     } catch (e: any) {
-                      setError(e?.message || '获取支付信息失败，请确认已配置支付密钥')
+                      setError(e?.message || 'Failed to get payment info, please verify payment keys')
                     }
                   }}
                 >
-                  重试加载
+                  Retry
                 </Button>
               </div>
             </div>
@@ -545,7 +562,7 @@ export default function CheckoutPage() {
                 onClick={() => setError(null)}
                 className="text-xs text-red-500 hover:text-red-600 mt-2"
               >
-                关闭
+                Close
               </button>
             </div>
           )}
@@ -563,11 +580,11 @@ export default function CheckoutPage() {
             className="flex items-center gap-2 text-sm text-[#C89460] hover:text-[#3C2415] transition-colors mb-8"
           >
             <ArrowLeft size={16} />
-            {existingOrderId ? '返回订单详情' : '返回购物车'}
+            {existingOrderId ? 'Back to Order Details' : 'Back to Cart'}
           </button>
           <div className="text-center">
-            <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">{existingOrderId ? '支付' : '结账'}</p>
-            <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">{existingOrderId ? '完成支付' : '结账'}</h1>
+            <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">{t('checkout.title')}</p>
+            <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">{existingOrderId ? 'Complete Payment' : t('checkout.title')}</h1>
           </div>
         </div>
       </div>
@@ -575,10 +592,10 @@ export default function CheckoutPage() {
       <div className="mx-auto max-w-[1440px] px-8 py-12">
         {validItems.length === 0 && !existingOrderId ? (
           <div className="text-center py-16">
-            <p className="text-lg font-['Playfair_Display'] text-[#3C2415] mb-2">购物车是空的</p>
-            <p className="text-sm text-[#3C2415]/50 mb-8">请先添加商品到购物车</p>
-            <Button onClick={() => navigate('/products')}>
-              去购物
+            <p className="text-lg font-['Playfair_Display'] text-[#3C2415] mb-2">{t('cart.empty')}</p>
+            <p className="text-sm text-[#3C2415]/50 mb-8">{t('cart.emptyHint')}</p>
+            <Button onClick={() => navigate(`/${lang}/products`)}>
+              Shop Now
             </Button>
           </div>
         ) : (
@@ -587,21 +604,21 @@ export default function CheckoutPage() {
               <div className={`bg-white border rounded-lg p-6 ${submitAttempted && !selectedShippingAddress ? 'border-red-300 bg-red-50/30' : 'border-[#3C2415]/10'}`}>
                 <h3 className="text-sm font-medium text-[#3C2415] mb-4 flex items-center gap-2">
                   <MapPin size={16} className="text-[#C89460]" />
-                  配送地址
+                  {t('checkout.shippingAddress')}
                 </h3>
 
                 {submitAttempted && !selectedShippingAddress && addresses.length > 0 && (
                   <p className="text-xs text-red-500 mb-4 flex items-center gap-1">
                     <span className="inline-block w-1 h-1 rounded-full bg-red-500" />
-                    请勾选收货地址
+                    {t('checkout.selectShippingAddress')}
                   </p>
                 )}
 
                 {addresses.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-sm text-[#3C2415]/60 mb-4">暂无收货地址</p>
-                    <Button variant="outline" size="sm" onClick={() => navigate('/addresses')}>
-                      添加地址
+                    <p className="text-sm text-[#3C2415]/60 mb-4">{t('checkout.addAddressFirst')}</p>
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/${lang}/addresses`)}>
+                      Add Address
                     </Button>
                   </div>
                 ) : (
@@ -620,15 +637,24 @@ export default function CheckoutPage() {
                           name="shippingAddress"
                           value={address.id}
                           checked={selectedShippingAddress === address.id}
-                          onChange={(e) => setSelectedShippingAddress(e.target.value)}
+                          onChange={(e) => {
+                            const newAddressId = e.target.value
+                            setSelectedShippingAddress(newAddressId)
+                            if (selectedBillingAddress === selectedShippingAddress) {
+                              setSelectedBillingAddress(newAddressId)
+                            }
+                          }}
                           className="mt-1"
                         />
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-medium text-[#3C2415]">
                               {address.firstName} {address.lastName}
                             </span>
-                            {address.isDefault && (
+                            {address.phone && (
+                              <span className="text-xs text-[#3C2415]/60">{address.phone}</span>
+                            )}
+                            {Boolean(address.isDefault) && (
                               <span className="text-xs text-[#C89460]">默认</span>
                             )}
                           </div>
@@ -648,7 +674,7 @@ export default function CheckoutPage() {
               <div className="bg-white border border-[#3C2415]/10 rounded-lg p-6">
                 <h3 className="text-sm font-medium text-[#3C2415] mb-4 flex items-center gap-2">
                   <MapPin size={16} className="text-[#C89460]" />
-                  账单地址
+                  {t('checkout.billingAddress')}
                 </h3>
 
                 <div className="mb-4">
@@ -665,7 +691,7 @@ export default function CheckoutPage() {
                       }}
                       className="rounded"
                     />
-                    <span className="text-sm text-[#3C2415]">与配送地址相同</span>
+                    <span className="text-sm text-[#3C2415]">{t('checkout.sameAsShipping')}</span>
                   </label>
                 </div>
 
@@ -689,9 +715,17 @@ export default function CheckoutPage() {
                           className="mt-1"
                         />
                         <div className="flex-1">
-                          <span className="text-sm font-medium text-[#3C2415]">
-                            {address.firstName} {address.lastName}
-                          </span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium text-[#3C2415]">
+                              {address.firstName} {address.lastName}
+                            </span>
+                            {address.phone && (
+                              <span className="text-xs text-[#3C2415]/60">{address.phone}</span>
+                            )}
+                            {Boolean(address.isDefault) && (
+                              <span className="text-xs text-[#C89460]">默认</span>
+                            )}
+                          </div>
                           <p className="text-xs text-[#3C2415]/60 mt-1">
                             {address.line1} {address.line2}
                           </p>
@@ -705,7 +739,7 @@ export default function CheckoutPage() {
               <div className="bg-white border border-[#3C2415]/10 rounded-lg p-6">
                 <h3 className="text-sm font-medium text-[#3C2415] mb-4 flex items-center gap-2">
                   <Truck size={16} className="text-[#C89460]" />
-                  配送方式
+                  {t('checkout.shippingMethod')}
                 </h3>
 
                 <div className="space-y-3">
@@ -733,7 +767,7 @@ export default function CheckoutPage() {
                         </div>
                       </div>
                       <span className="text-sm text-[#3C2415]">
-                        {method.price === 0 ? '免费' : `$${method.price}`}
+                        {method.price === 0 ? t('checkout.freeShipping') : `$${method.price}`}
                       </span>
                     </label>
                   ))}
@@ -743,14 +777,14 @@ export default function CheckoutPage() {
               <div className="bg-white border border-[#3C2415]/10 rounded-lg p-6">
                 <h3 className="text-sm font-medium text-[#3C2415] mb-4 flex items-center gap-2">
                   <CreditCard size={16} className="text-[#C89460]" />
-                  支付方式
+                  {t('checkout.paymentMethod')}
                 </h3>
 
                 <div className="grid grid-cols-3 gap-3">
                   {[
-                    { value: 'stripe', label: 'Stripe', icon: '💳' },
-                    { value: 'paypal', label: 'PayPal', icon: '🌐' },
-                    { value: 'alipay', label: 'Alipay', icon: '🛒' },
+                    { value: 'paypal', label: 'PayPal', Icon: Globe },
+                    { value: 'airwallex', label: 'Airwallex', Icon: Wallet },
+                    { value: 'lianlianpay', label: 'Lianlianpay', Icon: CreditCard },
                   ].map((provider) => (
                     <label
                       key={provider.value}
@@ -760,13 +794,13 @@ export default function CheckoutPage() {
                           : 'border-[#3C2415]/10 hover:border-[#3C2415]/30'
                       }`}
                     >
-                      <span className="text-2xl mb-2">{provider.icon}</span>
+                      <provider.Icon size={24} className="text-[#3C2415] mb-2" />
                       <input
                         type="radio"
                         name="paymentProvider"
                         value={provider.value}
                         checked={paymentProvider === provider.value}
-                        onChange={(e) => setPaymentProvider(e.target.value as 'stripe' | 'paypal' | 'alipay')}
+                        onChange={(e) => setPaymentProvider(e.target.value as 'paypal' | 'airwallex' | 'lianlianpay')}
                         className="sr-only"
                       />
                       <span className="text-xs text-[#3C2415]">{provider.label}</span>
@@ -782,7 +816,7 @@ export default function CheckoutPage() {
                     onClick={() => setError(null)}
                     className="text-xs text-red-500 hover:text-red-600 mt-2"
                   >
-                    关闭
+                    Close
                   </button>
                 </div>
               )}
@@ -790,13 +824,13 @@ export default function CheckoutPage() {
 
             <div className="lg:col-span-1">
               <div className="bg-[#F5F0E8] rounded-lg p-6 sticky top-24">
-                <h3 className="text-sm font-medium text-[#3C2415] mb-4">订单摘要</h3>
+                <h3 className="text-sm font-medium text-[#3C2415] mb-4">{t('cart.orderSummary')}</h3>
 
                 <div className="space-y-4">
                   {existingOrderId && orderResult ? (
                     <>
                       <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs text-[#3C2415]/60">订单号</span>
+                        <span className="text-xs text-[#3C2415]/60">Order No.</span>
                         <span className="text-xs font-medium text-[#3C2415]">{orderResult.orderNumber}</span>
                       </div>
                       <div className="border-b border-[#3C2415]/10 pb-4">
@@ -819,7 +853,7 @@ export default function CheckoutPage() {
                             </div>
                           ))
                         ) : (
-                          <p className="text-xs text-[#3C2415]/40">暂无商品信息</p>
+                          <p className="text-xs text-[#3C2415]/40">No items info</p>
                         )}
                       </div>
                     </>
@@ -849,23 +883,19 @@ export default function CheckoutPage() {
                     {!existingOrderId && (
                       <>
                         <div className="flex justify-between text-sm">
-                          <span className="text-[#3C2415]/60">小计</span>
+                          <span className="text-[#3C2415]/60">{t('cart.subtotal')}</span>
                           <span className="text-[#3C2415]">{formatPrice(validTotalPrice)}</span>
                         </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-[#3C2415]/60">运费</span>
-                          <span className="text-[#3C2415]">
-                            {shippingCost === 0 ? '免费' : formatPrice(shippingCost)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-[#3C2415]/60">税费</span>
-                          <span className="text-[#3C2415]">{formatPrice(taxAmount)}</span>
-                        </div>
+                        {shippingCost > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-[#3C2415]/60">{t('cart.shipping')}</span>
+                            <span className="text-[#3C2415]">{formatPrice(shippingCost)}</span>
+                          </div>
+                        )}
                       </>
                     )}
                     <div className="border-t border-[#3C2415]/10 pt-3 flex justify-between">
-                      <span className="text-sm font-medium text-[#3C2415]">合计</span>
+                      <span className="text-sm font-medium text-[#3C2415]">{t('cart.total')}</span>
                       <span className="text-lg font-medium text-[#3C2415]">
                         {existingOrderId && orderResult ? formatPrice(orderResult.total) : formatPrice(orderTotal)}
                       </span>
@@ -877,30 +907,30 @@ export default function CheckoutPage() {
                       <div className="mt-4">
                         <label className="flex items-center gap-2 text-xs text-[#3C2415]/60 mb-2">
                           <Gift size={14} />
-                          优惠码
+                          {t('checkout.discountCode')}
                         </label>
                         <div className="flex gap-2">
                           <input
                             type="text"
                             value={discountCode}
                             onChange={(e) => setDiscountCode(e.target.value)}
-                            placeholder="输入优惠码"
+                            placeholder={t('checkout.discountPlaceholder')}
                             className="flex-1 px-3 py-2 text-sm border border-[#3C2415]/20 rounded-lg focus:outline-none focus:border-[#C89460]"
                           />
                           <Button variant="outline" size="sm">
-                            应用
+                            {t('common.apply')}
                           </Button>
                         </div>
                       </div>
 
                       <div className="mt-4">
                         <label className="flex items-center gap-2 text-xs text-[#3C2415]/60 mb-2">
-                          订单备注
+                          {t('checkout.notes')}
                         </label>
                         <textarea
                           value={notes}
                           onChange={(e) => setNotes(e.target.value)}
-                          placeholder="如有特殊要求请备注"
+                          placeholder={t('checkout.notesPlaceholder')}
                           rows={3}
                           className="w-full px-3 py-2 text-sm border border-[#3C2415]/20 rounded-lg focus:outline-none focus:border-[#C89460] resize-none"
                         />
@@ -914,7 +944,7 @@ export default function CheckoutPage() {
                     className="w-full mt-6"
                     disabled={isSubmitting || addresses.length === 0 || !selectedShippingAddress || !selectedBillingAddress || !addresses.some(addr => addr.id === selectedShippingAddress) || !addresses.some(addr => addr.id === selectedBillingAddress)}
                   >
-                    {isSubmitting ? '处理中...' : addresses.length === 0 ? '请先添加收货地址' : !selectedShippingAddress ? '请先勾选收货地址' : !selectedBillingAddress ? '请先选择账单地址' : (existingOrderId && orderResult ? `确认支付 ${formatPrice(orderResult.total)}` : `提交订单 ${formatPrice(orderTotal)}`)}
+                    {isSubmitting ? t('payment.processingBtn') : addresses.length === 0 ? t('checkout.addAddressFirst') : !selectedShippingAddress ? t('checkout.selectShippingAddress') : !selectedBillingAddress ? t('checkout.selectBillingAddress') : (existingOrderId && orderResult ? `${t('payment.confirmPay', { amount: formatPrice(orderResult.total) })}` : `${t('checkout.placeOrder')} ${formatPrice(orderTotal)}`)}
                   </Button>
                 </div>
               </div>

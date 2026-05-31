@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Minus, Plus, Check } from 'lucide-react'
 import { Product, ProductVariant } from '@/services/api'
 import { useCartStore } from '@/store/cartStore'
 import { useCartAnimationStore } from '@/store/cartAnimationStore'
+import { useTranslation } from '@/i18n'
 import Button from '@/components/ui/Button'
 import CartAnimation from './CartAnimation'
 
@@ -11,6 +12,7 @@ interface ProductInfoProps {
 }
 
 export default function ProductInfo({ product }: ProductInfoProps) {
+  const { t } = useTranslation()
   const [selectedColor, setSelectedColor] = useState<string>(product.variants[0]?.colorName || '')
   const [selectedSize, setSelectedSize] = useState<string>(product.variants[0]?.size || '')
   const [quantity, setQuantity] = useState(1)
@@ -18,7 +20,7 @@ export default function ProductInfo({ product }: ProductInfoProps) {
   const [animations, setAnimations] = useState<{ id: number; startX: number; startY: number; endX: number; endY: number }[]>([])
   const addItem = useCartStore((s) => s.addItem)
   const cartIconRef = useCartAnimationStore((s) => s.cartIconRef)
-  let animationIdCounter = 0
+  const animationIdCounter = useRef(0)
 
   const getUniqueColors = () => {
     const colorMap = new Map<string, string>()
@@ -61,6 +63,7 @@ export default function ProductInfo({ product }: ProductInfoProps) {
   }
 
   const handleAddToCart = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault()
     const currentColor = selectedColor
     const currentSize = selectedSize
     const currentQty = quantity
@@ -84,7 +87,7 @@ export default function ProductInfo({ product }: ProductInfoProps) {
     }
 
     const newAnimation = {
-      id: animationIdCounter++,
+      id: animationIdCounter.current++,
       startX,
       startY,
       endX,
@@ -107,7 +110,7 @@ export default function ProductInfo({ product }: ProductInfoProps) {
   return (
     <div className="md:sticky md:top-28">
       <p className="text-xs tracking-[0.2em] uppercase text-[#C89460] mb-2">
-        {product.series === 'classic' ? '经典系列' : product.series === 'luxe' ? '轻奢系列' : '旅行系列'}
+        {product.series === 'classic' ? t('product.classic') : product.series === 'luxe' ? t('product.luxe') : t('product.travel')}
       </p>
       <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415] mb-4">
         {product.name}
@@ -115,14 +118,14 @@ export default function ProductInfo({ product }: ProductInfoProps) {
       <p className="text-2xl text-[#3C2415] mb-2">
         ${getPrice().toLocaleString()}
       </p>
-      <p className="text-xs text-[#3C2415]/40 mb-8">含税价格 · 免费配送</p>
+      <p className="text-xs text-[#3C2415]/40 mb-8">{t('product.taxIncluded')}</p>
 
       <p className="text-[#3C2415]/70 leading-relaxed mb-8">
         {product.description}
       </p>
 
       <div className="mb-6">
-        <p className="text-xs tracking-wider uppercase text-[#3C2415]/50 mb-3">颜色</p>
+        <p className="text-xs tracking-wider uppercase text-[#3C2415]/50 mb-3">{t('product.color')}</p>
         <div className="flex gap-3">
           {colors.map((color) => (
             <button
@@ -152,7 +155,7 @@ export default function ProductInfo({ product }: ProductInfoProps) {
       </div>
 
       <div className="mb-8">
-        <p className="text-xs tracking-wider uppercase text-[#3C2415]/50 mb-3">尺寸</p>
+        <p className="text-xs tracking-wider uppercase text-[#3C2415]/50 mb-3">{t('product.size')}</p>
         <div className="flex gap-2">
           {sizes.map((size) => (
             <button
@@ -171,12 +174,12 @@ export default function ProductInfo({ product }: ProductInfoProps) {
       </div>
 
       <div className="mb-8">
-        <p className="text-xs tracking-wider uppercase text-[#3C2415]/50 mb-3">数量</p>
+        <p className="text-xs tracking-wider uppercase text-[#3C2415]/50 mb-3">{t('product.quantity')}</p>
         <div className="flex items-center border border-[#3C2415]/20 w-fit">
           <button
             onClick={() => setQuantity(Math.max(1, quantity - 1))}
             className="px-4 py-2 text-[#3C2415] hover:bg-[#3C2415]/5 transition-colors"
-            aria-label="减少"
+            aria-label={t('product.decrease')}
           >
             <Minus size={14} />
           </button>
@@ -186,7 +189,7 @@ export default function ProductInfo({ product }: ProductInfoProps) {
           <button
             onClick={() => setQuantity(quantity + 1)}
             className="px-4 py-2 text-[#3C2415] hover:bg-[#3C2415]/5 transition-colors"
-            aria-label="增加"
+            aria-label={t('product.increase')}
           >
             <Plus size={14} />
           </button>
@@ -199,11 +202,11 @@ export default function ProductInfo({ product }: ProductInfoProps) {
         className="w-full mb-3"
         onClick={handleAddToCart}
       >
-        {added ? '已加入购物车' : `加入购物车 · $${(getPrice() * quantity).toLocaleString()}`}
+        {added ? t('product.addedToCart') : `${t('product.addToCart')} · $${(getPrice() * quantity).toLocaleString()}`}
       </Button>
 
       <p className="text-xs text-[#3C2415]/40 leading-relaxed mt-4">
-        材质: {product.material} · 意大利制造 · 终身保修
+        {t('product.material')}: {product.material} · {t('product.madeInItaly')}
       </p>
 
       {animations.map((anim) => (

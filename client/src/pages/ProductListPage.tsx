@@ -2,18 +2,21 @@ import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { productApi, categoryApi, Category, Product } from '@/services/api'
+import { useTranslation } from '@/i18n'
 import FilterBar from '@/components/products/FilterBar'
 import ProductGrid from '@/components/products/ProductGrid'
 
 export default function ProductListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialSeries = searchParams.get('series') || ''
+  const initialSearch = searchParams.get('search') || ''
   const [activeSeries, setActiveSeries] = useState(initialSeries)
   const [activeCategory, setActiveCategory] = useState('')
   const [sortBy, setSortBy] = useState('default')
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { t } = useTranslation()
 
   useEffect(() => {
     const newSeries = searchParams.get('series') || ''
@@ -73,6 +76,18 @@ export default function ProductListPage() {
       ? products.filter((p) => p.series === activeSeries)
       : [...products]
 
+    if (initialSearch) {
+      const searchLower = initialSearch.toLowerCase()
+      result = result.filter((p) => {
+        const nameMatch = p.name.toLowerCase().includes(searchLower) ||
+          (p.nameEn && p.nameEn.toLowerCase().includes(searchLower))
+        const descMatch = (p.description && p.description.toLowerCase().includes(searchLower)) ||
+          (p.descriptionEn && p.descriptionEn.toLowerCase().includes(searchLower))
+        const seriesMatch = p.series && p.series.toLowerCase().includes(searchLower)
+        return nameMatch || descMatch || seriesMatch
+      })
+    }
+
     switch (sortBy) {
       case 'price-asc':
         result.sort((a, b) => parseFloat(a.basePrice) - parseFloat(b.basePrice))
@@ -83,7 +98,7 @@ export default function ProductListPage() {
     }
 
     return result
-  }, [activeSeries, sortBy, products])
+  }, [activeSeries, sortBy, products, initialSearch])
 
   if (isLoading) {
     return (
@@ -95,39 +110,52 @@ export default function ProductListPage() {
 
   return (
     <main className="min-h-screen bg-[#FAF7F2]">
-      <div className="pt-24 pb-16 bg-[#F5F0E8]">
+      <div className="pt-20 pb-8 sm:pt-24 sm:pb-16 bg-[#F5F0E8]">
         <div className="mx-auto max-w-[1440px] px-8 text-center">
-          <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">
-            全部产品
-          </p>
-          <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">
-            {activeSeries
-              ? activeSeries === 'classic'
-                ? '经典系列'
-                : activeSeries === 'luxe'
-                ? '轻奢系列'
-                : '旅行系列'
-              : '探索我们的完整系列'}
-          </h1>
+          {initialSearch ? (
+            <>
+              <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">
+                {t('search.viewAllResults').replace('{count}', String(filtered.length))}
+              </p>
+              <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">
+                "{initialSearch}"
+              </h1>
+            </>
+          ) : (
+            <>
+              <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">
+                {t('product.allProducts')}
+              </p>
+              <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">
+                {activeSeries
+                  ? activeSeries === 'classic'
+                    ? t('product.classic')
+                    : activeSeries === 'luxe'
+                    ? t('product.luxe')
+                    : t('product.travel')
+                  : t('product.exploreFullCollection')}
+              </h1>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1440px] px-8 pb-24">
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-8 pb-16 sm:pb-24">
         <FilterBar
           activeSeries={activeSeries}
           onSeriesChange={handleSeriesChange}
           sortBy={sortBy}
           onSortChange={setSortBy}
-          categories={categories.map((c) => ({ id: c.id, nameZh: c.nameZh }))}
+          categories={categories.map((c) => ({ id: c.id, nameZh: c.nameZh, nameEn: c.nameEn }))}
           activeCategory={activeCategory}
           onCategoryChange={handleCategoryChange}
         />
-        <div className="mt-10">
+        <div className="mt-6 sm:mt-10">
           <ProductGrid products={filtered} />
         </div>
         {filtered.length > 0 && (
           <p className="text-center text-sm text-[#3C2415]/30 mt-12">
-            共 {filtered.length} 件产品
+            {t('product.totalProducts').replace('{count}', String(filtered.length))}
           </p>
         )}
       </div>

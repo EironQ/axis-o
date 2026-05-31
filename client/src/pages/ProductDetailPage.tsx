@@ -4,12 +4,15 @@ import { Loader2 } from 'lucide-react'
 import { productApi, Product } from '@/services/api'
 import ImageGallery from '@/components/products/ImageGallery'
 import { useSettings } from '@/context/SettingsContext'
+import { useTranslation, useLanguage } from '@/i18n'
 import ProductInfo from '@/components/products/ProductInfo'
 import ProductDescription from '@/components/products/ProductDescription'
 import ProductDetailContent from '@/components/products/ProductDetailContent'
 
 export default function ProductDetailPage() {
   const { store } = useSettings()
+  const { t } = useTranslation()
+  const { lang } = useLanguage()
   const { id } = useParams<{ id: string }>()
   const [product, setProduct] = useState<Product | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -47,13 +50,13 @@ export default function ProductDetailPage() {
       <main className="min-h-screen bg-[#FAF7F2] flex items-center justify-center">
         <div className="text-center">
           <p className="text-xl font-['Playfair_Display'] text-[#3C2415] mb-3">
-            产品未找到
+            {t('product.notFound')}
           </p>
           <Link
-            to="/products"
+            to={`/${lang}/products`}
             className="text-sm text-[#C89460] hover:text-[#3C2415] transition-colors border-b border-[#C89460] pb-1"
           >
-            返回产品列表
+            {t('product.backToList')}
           </Link>
         </div>
       </main>
@@ -64,15 +67,15 @@ export default function ProductDetailPage() {
     <main className="min-h-screen bg-[#FAF7F2]">
       <div className="mx-auto max-w-[1440px] px-8 pt-24 pb-6">
         <div className="flex items-center gap-2 text-xs text-[#3C2415]/40 mb-8">
-          <Link to="/" className="hover:text-[#C89460] transition-colors">首页</Link>
+          <Link to={`/${lang}`} className="hover:text-[#C89460] transition-colors">{t('nav.home')}</Link>
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
           <Link
-            to={`/products?series=${product.series}`}
+            to={`/${lang}/products?series=${product.series}`}
             className="hover:text-[#C89460] transition-colors"
           >
-            {product.series === 'classic' ? '经典系列' : product.series === 'luxe' ? '轻奢系列' : '旅行系列'}
+            {product.series === 'classic' ? t('product.classic') : product.series === 'luxe' ? t('product.luxe') : t('product.travel')}
           </Link>
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -94,13 +97,13 @@ export default function ProductDetailPage() {
 
       <div className="mx-auto max-w-[1440px] px-8 py-24">
         <p className="text-sm tracking-[0.3em] uppercase text-[#C89460] mb-2 text-center">
-          分享您的风格
+          {t('product.shareYourStyle')}
         </p>
         <p className="text-2xl font-['Playfair_Display'] text-[#3C2415] text-center mb-2">
           @{store.store_name}
         </p>
         <p className="text-sm text-[#3C2415]/40 text-center">
-          在社交平台上标记我们，展示您的专属搭配
+          {t('product.tagUs')}
         </p>
       </div>
     </main>

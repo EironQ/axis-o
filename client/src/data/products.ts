@@ -1,14 +1,13 @@
 import { Product, CollectionCard } from '@/types'
-
-const IMG = (prompt: string, size = 'square_hd') =>
-  `https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=${encodeURIComponent(prompt)}&image_size=${size}`
+import { collectionImages } from '@/assets/images'
+import { IMG } from './mockData'
 
 export const collections: CollectionCard[] = [
   {
     id: 'classic',
     title: '经典系列',
     subtitle: '简约百搭，日常优雅',
-    image: IMG('elegant minimalist leather tote bag on marble surface, warm cream background, soft natural lighting, luxury fashion photography, clean composition'),
+    image: collectionImages.classic,
     link: '/products?series=classic',
     series: 'classic',
   },
@@ -16,7 +15,7 @@ export const collections: CollectionCard[] = [
     id: 'luxe',
     title: '轻奢系列',
     subtitle: '精致宴会，高级质感',
-    image: IMG('luxury designer evening clutch bag with gold hardware, silk interior, dark moody lighting, high fashion editorial style, premium leather texture'),
+    image: collectionImages.luxe,
     link: '/products?series=luxe',
     series: 'luxe',
   },
@@ -24,7 +23,7 @@ export const collections: CollectionCard[] = [
     id: 'travel',
     title: '旅行系列',
     subtitle: '周末出行，实用大容量',
-    image: IMG('stylish leather weekend travel bag on wooden bench, natural sunlight, outdoor lifestyle setting, warm earthy tones, premium craftsmanship'),
+    image: collectionImages.travel,
     link: '/products?series=travel',
     series: 'travel',
   },

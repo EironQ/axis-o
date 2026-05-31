@@ -16,6 +16,7 @@ const DEFAULT_SETTINGS: Record<string, { value: string; group: string; descripti
   default_currency: { value: 'USD', group: 'general', description: '默认货币' },
   timezone: { value: 'Asia/Shanghai', group: 'general', description: '时区' },
   free_shipping_threshold: { value: '200', group: 'shipping', description: '免运费门槛金额(USD)' },
+  shipping_fee: { value: '50', group: 'shipping', description: '运费金额(USD)' },
   estimated_delivery_days: { value: '7', group: 'shipping', description: '预计配送天数' },
   instagram_url: { value: '', group: 'social', description: 'Instagram链接' },
   facebook_url: { value: '', group: 'social', description: 'Facebook链接' },

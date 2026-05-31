@@ -3,6 +3,18 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
 
 import { products } from '@/data/products'
 
+let isRefreshing = false
+let refreshSubscribers: ((token: string) => void)[] = []
+
+const subscribeTokenRefresh = (callback: (token: string) => void) => {
+  refreshSubscribers.push(callback)
+}
+
+const onTokenRefreshed = (token: string) => {
+  refreshSubscribers.forEach(callback => callback(token))
+  refreshSubscribers = []
+}
+
 const getAuthToken = () => localStorage.getItem('accessToken') || localStorage.getItem('token') || null
 
 const request = async <T>(
@@ -26,9 +38,37 @@ const request = async <T>(
 
   if (!response.ok) {
     if (response.status === 401) {
+      const refreshToken = localStorage.getItem('refreshToken')
+      if (refreshToken && !isRefreshing) {
+        isRefreshing = true
+        try {
+          const res = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken }),
+          })
+          const data = await res.json()
+          if (data.success && data.data?.accessToken) {
+            localStorage.setItem('accessToken', data.data.accessToken)
+            onTokenRefreshed(data.data.accessToken)
+            isRefreshing = false
+            const retryResponse = await fetch(`${API_BASE_URL}${url}`, {
+              ...options,
+              headers: { ...headers, Authorization: `Bearer ${data.data.accessToken}` },
+            })
+            if (retryResponse.ok) {
+              return retryResponse.json()
+            }
+          }
+        } catch (error) {
+          console.error('Token refresh failed:', error)
+        }
+        isRefreshing = false
+      }
       const authKeys = ['accessToken', 'refreshToken', 'token']
       authKeys.forEach((key) => localStorage.removeItem(key))
-      window.location.href = '/login'
+      const lang = localStorage.getItem('preferred_language') || 'zh'
+      window.location.href = `/${lang}/login`
       throw new Error('Session expired')
     }
     const error = await response.json().catch(() => ({ error: { message: 'Request failed' } }))
@@ -188,7 +228,7 @@ export interface CreateOrderRequest {
   shippingAddressId: string
   billingAddressId: string
   shippingMethod: string
-  paymentProvider: 'stripe' | 'paypal' | 'alipay'
+  paymentProvider: 'paypal' | 'airwallex' | 'lianlianpay'
   discountCode?: string
   notes?: string
   currency?: string
@@ -349,8 +389,7 @@ export interface Category {
   id: string
   nameEn: string
   nameZh: string
-  slug: string
-  imageUrl?: string
+  parentId?: string
   sortOrder: number
   isActive: boolean
 }
@@ -645,7 +684,7 @@ export interface PaymentIntentResponse {
     publishableKey: string
     clientSecret: string
     paypalOrderId?: string
-    alipayRedirectUrl?: string
+    airwallexRedirectUrl?: string
     alreadyPaid?: boolean
   }
 }
@@ -670,7 +709,7 @@ export interface RefundResponse {
 }
 
 export const paymentApi = {
-  createIntent: async (orderId: string, provider: 'stripe' | 'paypal' | 'alipay' = 'stripe') => {
+  createIntent: async (orderId: string, provider: 'paypal' | 'airwallex' | 'lianlianpay' = 'paypal') => {
     return request<PaymentIntentResponse>(`/payments/intent/${orderId}?provider=${provider}`)
   },
 

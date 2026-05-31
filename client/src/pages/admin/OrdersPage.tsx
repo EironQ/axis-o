@@ -426,12 +426,6 @@ export default function OrdersPage() {
                       <span className="text-gray-500">运费</span>
                       <span className="text-gray-900">{selectedOrder.shipping > 0 ? formatPrice(selectedOrder.shipping) : '免运费'}</span>
                     </div>
-                    {selectedOrder.taxAmount > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">税费</span>
-                        <span className="text-gray-900">{formatPrice(selectedOrder.taxAmount)}</span>
-                      </div>
-                    )}
                     {selectedOrder.discountAmount > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-green-600">折扣</span>

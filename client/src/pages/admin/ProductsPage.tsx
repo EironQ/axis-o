@@ -29,6 +29,7 @@ interface ProductFormData {
   sales: number
   careInstructions: string
   detailImages: { image: string; title: string; description: string }[]
+  notes: string
 }
 
 const seriesLabels: Record<string, string> = {
@@ -42,6 +43,7 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [seriesFilter, setSeriesFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
   const [showModal, setShowModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null)
   const [formData, setFormData] = useState<ProductFormData>({
@@ -65,6 +67,7 @@ export default function ProductsPage() {
     sales: 0,
     careInstructions: '',
     detailImages: [],
+    notes: '',
   })
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState('')
@@ -102,7 +105,8 @@ export default function ProductsPage() {
   const filteredProducts = products.filter((p) => {
     const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchSeries = seriesFilter === 'all' || p.series === seriesFilter
-    return matchSearch && matchSeries
+    const matchCategory = categoryFilter === 'all' || p.categoryId === categoryFilter
+    return matchSearch && matchSeries && matchCategory
   })
 
   const openCreateModal = () => {
@@ -128,6 +132,7 @@ export default function ProductsPage() {
       sales: 0,
       careInstructions: '',
       detailImages: [],
+      notes: '',
     })
     setShowModal(true)
   }
@@ -155,6 +160,7 @@ export default function ProductsPage() {
       sales: product.sales || 0,
       careInstructions: product.careInstructions || '',
       detailImages: product.detailImages || [],
+      notes: product.notes || '',
     })
     setShowModal(true)
 
@@ -191,9 +197,18 @@ export default function ProductsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    await adminProductService.delete(id)
-    setDeleteConfirm(null)
-    loadProducts()
+    try {
+      const result = await adminProductService.delete(id)
+      if (result.success) {
+        setDeleteConfirm(null)
+        loadProducts()
+      } else {
+        alert('删除失败，请重试')
+      }
+    } catch (error) {
+      console.error('Delete failed:', error)
+      alert('删除失败，请重试')
+    }
   }
 
   const formatDate = (dateStr: string) => {
@@ -225,6 +240,16 @@ export default function ProductsPage() {
             <option value="luxe">轻奢系列</option>
             <option value="travel">旅行系列</option>
           </select>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C89460] focus:border-transparent"
+          >
+            <option value="all">全部分类</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.nameZh}</option>
+            ))}
+          </select>
         </div>
         <button
           onClick={openCreateModal}
@@ -245,6 +270,7 @@ export default function ProductsPage() {
               <tr className="bg-gray-50">
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">商品</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">系列</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">分类</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">价格</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">库存</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">销量</th>
@@ -255,7 +281,7 @@ export default function ProductsPage() {
             <tbody className="divide-y divide-gray-100">
               {filteredProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
                     暂无商品数据
                   </td>
                 </tr>
@@ -269,7 +295,6 @@ export default function ProductsPage() {
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-900">{product.name}</p>
-                          <p className="text-xs text-gray-500">{product.category}</p>
                         </div>
                       </div>
                     </td>
@@ -277,6 +302,9 @@ export default function ProductsPage() {
                       <span className="px-2 py-1 text-xs font-medium rounded-full bg-[#FFF5E6] text-[#C89460]">
                         {seriesLabels[product.series] || product.series}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {product.category || '-'}
                     </td>
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">{formatPrice(product.price)}</td>
                     <td className="px-4 py-3">
@@ -522,6 +550,17 @@ export default function ProductsPage() {
                 <DetailImageUpload
                   images={formData.detailImages}
                   onChange={(images) => setFormData({ ...formData, detailImages: images })}
+                />
+              </div>
+
+              <div className="border-t border-gray-100 pt-6 mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">管理员备注</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="仅供管理员内部标记使用，不会在前端显示"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C89460] focus:border-transparent text-sm"
                 />
               </div>
 

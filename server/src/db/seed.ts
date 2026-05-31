@@ -8,27 +8,26 @@ async function seed() {
   console.log('🌱 Seeding database...\n')
 
   const categoryData = [
-    { nameEn: 'Handbags', nameZh: '手袋', slug: 'handbags', sortOrder: 1 },
-    { nameEn: 'Wallets', nameZh: '钱包', slug: 'wallets', sortOrder: 2 },
-    { nameEn: 'Accessories', nameZh: '配饰', slug: 'accessories', sortOrder: 3 },
-    { nameEn: 'Belts', nameZh: '腰带', slug: 'belts', sortOrder: 4 },
-    { nameEn: 'Travel Bags', nameZh: '旅行袋', slug: 'travel-bags', sortOrder: 5 },
+    { nameEn: 'Handbags', nameZh: '手袋', sortOrder: 1 },
+    { nameEn: 'Wallets', nameZh: '钱包', sortOrder: 2 },
+    { nameEn: 'Accessories', nameZh: '配饰', sortOrder: 3 },
+    { nameEn: 'Belts', nameZh: '腰带', sortOrder: 4 },
+    { nameEn: 'Travel Bags', nameZh: '旅行袋', sortOrder: 5 },
   ]
 
   const categoryIds: Record<string, string> = {}
   for (const cat of categoryData) {
-    const existing = await db.select({ id: categories.id }).from(categories).where(eq(categories.slug, cat.slug)).limit(1)
+    const existing = await db.select({ id: categories.id }).from(categories).where(eq(categories.nameEn, cat.nameEn)).limit(1)
     if (existing.length > 0) {
-      categoryIds[cat.slug] = existing[0].id
+      categoryIds[cat.nameEn] = existing[0].id
       console.log(`⏭️ Category already exists: ${cat.nameEn} / ${cat.nameZh}`)
     } else {
       const id = uuidv4()
-      categoryIds[cat.slug] = id
+      categoryIds[cat.nameEn] = id
       await db.insert(categories).values({
         id,
         nameEn: cat.nameEn,
         nameZh: cat.nameZh,
-        slug: cat.slug,
         sortOrder: cat.sortOrder,
         isActive: 1,
       })
@@ -37,23 +36,22 @@ async function seed() {
   }
 
   const subCategoryData = [
-    { nameEn: 'Tote Bags', nameZh: '托特包', slug: 'tote-bags', parentId: categoryIds['handbags'], sortOrder: 1 },
-    { nameEn: 'Crossbody Bags', nameZh: '斜挎包', slug: 'crossbody-bags', parentId: categoryIds['handbags'], sortOrder: 2 },
-    { nameEn: 'Shoulder Bags', nameZh: '单肩包', slug: 'shoulder-bags', parentId: categoryIds['handbags'], sortOrder: 3 },
-    { nameEn: 'Mini Bags', nameZh: '迷你包', slug: 'mini-bags', parentId: categoryIds['handbags'], sortOrder: 4 },
-    { nameEn: 'Card Wallets', nameZh: '卡包', slug: 'card-wallets', parentId: categoryIds['wallets'], sortOrder: 1 },
-    { nameEn: 'Coin Purses', nameZh: '零钱包', slug: 'coin-purses', parentId: categoryIds['wallets'], sortOrder: 2 },
-    { nameEn: 'Travel Wallets', nameZh: '旅行钱包', slug: 'travel-wallets', parentId: categoryIds['wallets'], sortOrder: 3 },
+    { nameEn: 'Tote Bags', nameZh: '托特包', parentId: categoryIds['Handbags'], sortOrder: 1 },
+    { nameEn: 'Crossbody Bags', nameZh: '斜挎包', parentId: categoryIds['Handbags'], sortOrder: 2 },
+    { nameEn: 'Shoulder Bags', nameZh: '单肩包', parentId: categoryIds['Handbags'], sortOrder: 3 },
+    { nameEn: 'Mini Bags', nameZh: '迷你包', parentId: categoryIds['Handbags'], sortOrder: 4 },
+    { nameEn: 'Card Wallets', nameZh: '卡包', parentId: categoryIds['Wallets'], sortOrder: 1 },
+    { nameEn: 'Coin Purses', nameZh: '零钱包', parentId: categoryIds['Wallets'], sortOrder: 2 },
+    { nameEn: 'Travel Wallets', nameZh: '旅行钱包', parentId: categoryIds['Wallets'], sortOrder: 3 },
   ]
 
   for (const subCat of subCategoryData) {
-    const existing = await db.select({ id: categories.id }).from(categories).where(eq(categories.slug, subCat.slug)).limit(1)
+    const existing = await db.select({ id: categories.id }).from(categories).where(eq(categories.nameEn, subCat.nameEn)).limit(1)
     if (existing.length === 0) {
       await db.insert(categories).values({
         id: uuidv4(),
         nameEn: subCat.nameEn,
         nameZh: subCat.nameZh,
-        slug: subCat.slug,
         parentId: subCat.parentId,
         sortOrder: subCat.sortOrder,
         isActive: 1,
@@ -64,7 +62,7 @@ async function seed() {
     }
   }
 
-  const categoryId = categoryIds['handbags']
+  const categoryId = categoryIds['Handbags']
 
   const existingProductCount = await db.select({ count: sql<number>`count(*)` }).from(products)
   const hasProducts = Number(existingProductCount[0].count) > 0
@@ -85,6 +83,7 @@ async function seed() {
       storyEn: 'Inspired by the timeless elegance of Milan fashion houses.',
       storyZh: '灵感源自米兰时装屋的永恒优雅。',
       basePrice: '2800.00',
+      stock: 100,
       isBestseller: 1,
       isActive: 1,
       sortOrder: 1,
@@ -111,6 +110,7 @@ async function seed() {
       storyEn: 'Designed for the modern woman who moves between boardrooms and cocktail parties.',
       storyZh: '专为在会议室与鸡尾酒会之间自如切换的现代女性设计。',
       basePrice: '3600.00',
+      stock: 100,
       isBestseller: 1,
       isActive: 1,
       sortOrder: 2,
@@ -136,6 +136,7 @@ async function seed() {
       storyEn: 'Built for the wanderlust soul, ready for spontaneous getaways.',
       storyZh: '为热爱旅行的灵魂而生，随时准备开启一场说走就走的旅行。',
       basePrice: '4200.00',
+      stock: 100,
       isBestseller: 0,
       isActive: 1,
       sortOrder: 3,
@@ -160,6 +161,7 @@ async function seed() {
       storyEn: 'A playful twist on the classic bucket silhouette, crafted for the young at heart.',
       storyZh: '经典水桶包的俏皮演绎，为永远年轻的心而打造。',
       basePrice: '2200.00',
+      stock: 100,
       isBestseller: 1,
       isActive: 1,
       sortOrder: 4,
@@ -185,6 +187,7 @@ async function seed() {
       storyEn: 'Where craftsmanship meets ambition — power dressing for your daily commute.',
       storyZh: '匠心与野心的交汇 — 为每日通勤赋予力量感。',
       basePrice: '5800.00',
+      stock: 100,
       isBestseller: 0,
       isActive: 1,
       sortOrder: 5,

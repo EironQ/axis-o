@@ -48,6 +48,7 @@ const tabConfigs: TabConfig[] = [
     label: '物流配置',
     icon: '📦',
     fields: [
+      { key: 'shipping_fee', label: '运费金额(USD)', type: 'number', placeholder: '50' },
       { key: 'free_shipping_threshold', label: '免运费门槛金额(USD)', type: 'number', placeholder: '200' },
       { key: 'estimated_delivery_days', label: '预计配送天数', type: 'number', placeholder: '7' },
     ],
@@ -77,10 +78,10 @@ const tabConfigs: TabConfig[] = [
       { key: 'paypal_client_secret', label: 'PayPal Client Secret', type: 'password', placeholder: 'EL...' },
       { key: 'paypal_webhook_id', label: 'PayPal Webhook ID', type: 'password', placeholder: 'WH-...' },
       { key: 'paypal_mode', label: 'PayPal 模式', type: 'select', options: [{ label: 'Sandbox (测试)', value: 'sandbox' }, { label: 'Live (生产)', value: 'live' }] },
-      { key: 'antym_client_id', label: 'Antom Client ID（支付宝，可选）', type: 'password', placeholder: '2021...' },
-      { key: 'antym_private_key', label: 'Antom 商户私钥（可选）', type: 'password', placeholder: '-----BEGIN RSA PRIVATE KEY-----' },
-      { key: 'antym_public_key', label: 'Antom 公钥（可选）', type: 'password', placeholder: '-----BEGIN PUBLIC KEY-----' },
-      { key: 'antym_mode', label: 'Antom 模式（可选）', type: 'select', options: [{ label: 'Sandbox (测试)', value: 'sandbox' }, { label: 'Live (生产)', value: 'live' }] },
+      { key: 'airwallex_client_id', label: 'Airwallex Client ID', type: 'password', placeholder: 'your-client-id' },
+      { key: 'airwallex_api_key', label: 'Airwallex API Key', type: 'password', placeholder: 'your-api-key' },
+      { key: 'airwallex_webhook_signing_key', label: 'Airwallex Webhook 签名密钥', type: 'password', placeholder: 'your-webhook-signing-key' },
+      { key: 'airwallex_mode', label: 'Airwallex 模式', type: 'select', options: [{ label: 'Sandbox (测试)', value: 'sandbox' }, { label: 'Live (生产)', value: 'live' }] },
     ],
   },
   {

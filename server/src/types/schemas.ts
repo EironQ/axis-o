@@ -32,7 +32,7 @@ export const createOrderSchema = z.object({
   shippingAddressId: z.string().min(1),
   billingAddressId: z.string().min(1),
   shippingMethod: z.string().min(1),
-  paymentProvider: z.enum(['stripe', 'paypal', 'alipay']),
+  paymentProvider: z.enum(['stripe', 'paypal', 'airwallex']),
   discountCode: z.string().optional(),
   notes: z.string().optional(),
   currency: z.string().length(3).default('USD'),
@@ -83,6 +83,12 @@ const productVariantSchema = z.object({
   isActive: z.coerce.boolean().default(true),
 })
 
+const productDetailImageSchema = z.object({
+  image: z.string().min(1).max(500),
+  title: z.string().min(1).max(255),
+  description: z.string().min(1),
+})
+
 export const createProductSchema = z.object({
   nameEn: z.string().min(1).max(255),
   nameZh: z.string().min(1).max(255),
@@ -104,16 +110,17 @@ export const createProductSchema = z.object({
   metaDescriptionZh: z.string().optional(),
   images: z.array(productImageSchema).optional().default([]),
   variants: z.array(productVariantSchema).optional().default([]),
+  detailImages: z.array(productDetailImageSchema).optional().default([]),
 })
 
 export const updateProductSchema = z.object({
   nameEn: z.string().min(1).max(255).optional(),
   nameZh: z.string().min(1).max(255).optional(),
   slug: z.string().min(1).max(255).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
-  descriptionEn: z.string().optional(),
-  descriptionZh: z.string().optional(),
-  storyEn: z.string().optional(),
-  storyZh: z.string().optional(),
+  descriptionEn: z.string().optional().nullable(),
+  descriptionZh: z.string().optional().nullable(),
+  storyEn: z.string().optional().nullable(),
+  storyZh: z.string().optional().nullable(),
   categoryId: z.string().min(1).optional().nullable(),
   series: z.enum(['classic', 'luxe', 'travel']).optional(),
   material: z.string().max(200).optional().nullable(),
@@ -126,8 +133,11 @@ export const updateProductSchema = z.object({
   metaTitleZh: z.string().max(255).optional().nullable(),
   metaDescriptionEn: z.string().optional().nullable(),
   metaDescriptionZh: z.string().optional().nullable(),
+  stock: z.coerce.number().int().min(0).optional(),
+  notes: z.string().optional().nullable(),
   images: z.array(productImageSchema).optional(),
   variants: z.array(productVariantSchema).optional(),
+  detailImages: z.array(productDetailImageSchema).optional(),
 })
 
 export const adminProductQuerySchema = z.object({

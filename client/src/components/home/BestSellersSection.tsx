@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 import { productApi } from '@/services/api'
+import { useTranslation, useLanguage } from '@/i18n'
 import ProductCard from '@/components/products/ProductCard'
 
 export default function BestSellersSection() {
@@ -12,6 +13,8 @@ export default function BestSellersSection() {
   const [canScrollRight, setCanScrollRight] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
   const addItem = useCartStore((s) => s.addItem)
+  const { t } = useTranslation()
+  const { lang } = useLanguage()
 
   useEffect(() => {
     loadBestSellers()
@@ -72,10 +75,10 @@ export default function BestSellersSection() {
         <div className="flex items-end justify-between mb-12">
           <div>
             <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">
-              热销推荐
+              {t('home.bestSellers')}
             </p>
             <h2 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">
-              客人心选
+              {t('home.customerFavorites')}
             </h2>
           </div>
           <div className="hidden md:flex items-center gap-3">
@@ -83,7 +86,7 @@ export default function BestSellersSection() {
               onClick={() => scroll('left')}
               disabled={!canScrollLeft}
               className="w-10 h-10 rounded-full border border-[#3C2415]/20 flex items-center justify-center text-[#3C2415]/60 hover:text-[#3C2415] hover:border-[#3C2415]/40 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
-              aria-label="向左滚动"
+              aria-label={t('home.prevSlide')}
             >
               <ChevronLeft size={18} />
             </button>
@@ -91,22 +94,22 @@ export default function BestSellersSection() {
               onClick={() => scroll('right')}
               disabled={!canScrollRight}
               className="w-10 h-10 rounded-full border border-[#3C2415]/20 flex items-center justify-center text-[#3C2415]/60 hover:text-[#3C2415] hover:border-[#3C2415]/40 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
-              aria-label="向右滚动"
+              aria-label={t('home.nextSlide')}
             >
               <ChevronRight size={18} />
             </button>
             <Link
-              to="/products"
+              to={`/${lang}/products`}
               className="ml-2 text-sm tracking-widest uppercase text-[#3C2415]/60 hover:text-[#C89460] transition-colors border-b border-[#3C2415]/20 hover:border-[#C89460] pb-1"
             >
-              查看全部
+              {t('home.viewAll')}
             </Link>
           </div>
           <Link
-            to="/products"
+            to={`/${lang}/products`}
             className="md:hidden text-sm tracking-widest uppercase text-[#3C2415]/60 hover:text-[#C89460] transition-colors border-b border-[#3C2415]/20 hover:border-[#C89460] pb-1"
           >
-            查看全部
+            {t('home.viewAll')}
           </Link>
         </div>
 

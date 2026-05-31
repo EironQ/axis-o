@@ -1,6 +1,6 @@
 import { products } from './products'
 
-const IMG = (prompt: string, size = 'square_hd') =>
+export const IMG = (prompt: string, size = 'square_hd') =>
   `https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=${encodeURIComponent(prompt)}&image_size=${size}`
 
 export interface MockCartItem {
@@ -31,7 +31,7 @@ export interface MockOrder {
   total: number
   shippingAddress: MockAddress
   billingAddress: MockAddress
-  paymentMethod: 'stripe' | 'paypal' | 'alipay'
+  paymentMethod: 'stripe' | 'paypal' | 'airwallex'
   trackingNumber?: string
   note?: string
 }
@@ -182,7 +182,7 @@ export const mockOrders: MockOrder[] = [
     taxAmount: 262.4,
     discountAmount: 0,
     total: 3542.4,
-    paymentMethod: 'alipay',
+    paymentMethod: 'airwallex',
     trackingNumber: 'SF9876543210',
     shippingAddress: mockAddresses[1],
     billingAddress: mockAddresses[1],

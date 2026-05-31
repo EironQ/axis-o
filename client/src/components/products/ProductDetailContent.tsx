@@ -25,11 +25,11 @@ export default function ProductDetailContent({ images }: ProductDetailContentPro
             }`}
           >
             <div className={`${index % 2 === 1 ? 'md:order-2' : ''}`}>
-              <div className="bg-[#F5F0E8] overflow-hidden">
+              <div className="bg-[#F5F0E8] overflow-hidden aspect-[16/9]">
                 <img
                   src={item.image}
                   alt={item.title}
-                  className="w-full aspect-[4/3] object-cover transition-transform duration-700 hover:scale-105"
+                  className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
                 />
               </div>
             </div>

@@ -5,8 +5,9 @@ import { eq, and, desc, like, or, sql } from 'drizzle-orm'
 import { v4 as uuidv4 } from '../utils/uuid'
 import { StripeService, getStripePublishableKey } from '../services/payment/stripe'
 import { PayPalService, getPayPalClientId } from '../services/payment/paypal'
-import { AlipayService } from '../services/payment/alipay'
+import { AirwallexService } from '../services/payment/airwallex'
 import { OrderEmailHelper } from '../services/orderEmailHelper'
+import { getCachedSetting, getSetting } from '../services/settingsCache'
 
 type EventType = 'intent_created' | 'intent_succeeded' | 'intent_failed' | 'intent_canceled' | 'refund_requested' | 'refund_succeeded' | 'refund_failed' | 'status_synced' | 'webhook_received'
 
@@ -14,7 +15,7 @@ interface EventLogParams {
   paymentId: string
   orderId: string
   eventType: EventType
-  provider: 'stripe' | 'paypal' | 'alipay'
+  provider: 'stripe' | 'paypal' | 'airwallex'
   providerEventId?: string | null
   amount?: string
   currency?: string
@@ -247,8 +248,8 @@ export const PaymentController = {
 
       const paymentId = uuidv4()
 
-      if (provider === 'alipay') {
-        const alipayResult = await AlipayService.createPayment({
+      if (provider === 'airwallex') {
+        const airwallexResult = await AirwallexService.createPayment({
           orderId,
           orderNumber: order.orderNumber,
           amount: parseFloat(order.total.toString()),
@@ -259,8 +260,8 @@ export const PaymentController = {
         const paymentData = {
           id: paymentId,
           orderId,
-          provider: 'alipay' as const,
-          transactionId: alipayResult.paymentId,
+          provider: 'airwallex' as const,
+          transactionId: airwallexResult.paymentIntentId,
           status: 'pending' as const,
           amount: order.total,
           currency: order.currency,
@@ -274,12 +275,12 @@ export const PaymentController = {
           paymentId,
           orderId,
           eventType: 'intent_created',
-          provider: 'alipay',
-          providerEventId: alipayResult.paymentId,
+          provider: 'airwallex',
+          providerEventId: airwallexResult.paymentIntentId,
           amount: order.total,
           currency: order.currency,
           statusAfter: 'pending',
-          notes: `Antom payment created for order #${order.orderNumber}`,
+          notes: `Airwallex payment created for order #${order.orderNumber}`,
         })
 
         res.json({
@@ -291,9 +292,9 @@ export const PaymentController = {
             amount: parseFloat(order.total.toString()),
             currency: order.currency,
             publishableKey: '',
-            clientSecret: '',
+            clientSecret: airwallexResult.clientSecret,
             paypalOrderId: '',
-            alipayRedirectUrl: alipayResult.redirectUrl,
+            airwallexRedirectUrl: airwallexResult.redirectUrl,
           },
         })
         return
@@ -1376,47 +1377,55 @@ export const PaymentController = {
     }
   },
 
-  handleAlipayNotify: async (req: Request, res: Response) => {
+  handleAirwallexNotify: async (req: Request, res: Response) => {
     try {
       const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
 
-      console.log('[Antom Notify] Received notification:', rawBody)
+      console.log('[Airwallex Notify] Received notification:', rawBody)
 
-      const headers: Record<string, string> = {}
-      const headerKeys = ['client-id', 'request-time', 'signature', 'x-request-uri', 'x-request-method']
-      for (const key of headerKeys) {
-        const value = req.headers[key]
-        if (value) {
-          headers[key] = Array.isArray(value) ? value[0] : value
+      const timestamp = (req.headers['x-airwallex-timestamp'] as string) || ''
+      const signature = (req.headers['x-airwallex-signature'] as string) || ''
+
+      const signingKey = await (async () => {
+        const cached = getCachedSetting('airwallex_webhook_signing_key')
+        if (cached) return cached
+        const fresh = await getSetting('airwallex_webhook_signing_key')
+        return fresh || ''
+      })()
+
+      if (signingKey && timestamp && signature) {
+        const verified = AirwallexService.verifyWebhookSignature(rawBody, signature, timestamp, signingKey)
+        if (!verified) {
+          console.error('[Airwallex Notify] Signature verification failed')
+          res.status(400).json({ result: { resultCode: 'SIGNATURE_FAILED', resultMessage: 'signature verification failed', resultStatus: 'F' } })
+          return
         }
-      }
-      headers['x-request-uri'] = headers['x-request-uri'] || req.originalUrl || req.url || ''
-      headers['x-request-method'] = headers['x-request-method'] || req.method
-
-      const verified = AlipayService.verifyNotification(headers, rawBody)
-      if (!verified) {
-        console.error('[Antom Notify] Signature verification failed')
-        res.status(400).json({ result: { resultCode: 'SIGNATURE_FAILED', resultMessage: 'signature verification failed', resultStatus: 'F' } })
-        return
       }
 
       const event = JSON.parse(rawBody) as {
-        paymentRequestId?: string
-        paymentId?: string
-        paymentStatus?: string
-        paymentResultCode?: string
-        paymentResultMessage?: string
-        paymentAmount?: { currency?: string; value?: string }
+        id?: string
+        event_type?: string
+        created_at?: string
+        data?: {
+          object?: {
+            id?: string
+            status?: string
+            amount?: number
+            currency?: string
+            merchant_order_id?: string
+            payment_method_id?: string
+          }
+        }
       }
 
-      const paymentId = event.paymentId || event.paymentRequestId || ''
-      const paymentStatus = event.paymentStatus || ''
-      const currency = event.paymentAmount?.currency || 'USD'
-      const amountValue = event.paymentAmount?.value || ''
+      const paymentIntentId = event.data?.object?.id || event.id || ''
+      const paymentStatus = event.data?.object?.status || ''
+      const currency = event.data?.object?.currency || 'USD'
+      const amountValue = event.data?.object?.amount?.toFixed(2) || ''
 
-      if (!paymentId) {
-        console.error('[Antom Notify] Missing paymentId')
-        res.status(400).json({ result: { resultCode: 'MISSING_ID', resultMessage: 'missing paymentId', resultStatus: 'F' } })
+      if (!paymentIntentId) {
+        console.error('[Airwallex Notify] Missing payment intent id')
+        res.status(400).json({ result: { resultCode: 'MISSING_ID', resultMessage: 'missing payment intent id', resultStatus: 'F' } })
         return
       }
 
@@ -1427,18 +1436,18 @@ export const PaymentController = {
           orderId: payments.orderId,
         })
         .from(payments)
-        .where(eq(payments.transactionId, paymentId))
+        .where(eq(payments.transactionId, paymentIntentId))
         .limit(1)
 
       if (paymentResult.length === 0) {
-        console.error(`[Antom Notify] No payment record found for paymentId ${paymentId}`)
+        console.error(`[Airwallex Notify] No payment record found for paymentIntentId ${paymentIntentId}`)
         res.status(400).json({ result: { resultCode: 'NOT_FOUND', resultMessage: 'payment not found', resultStatus: 'F' } })
         return
       }
 
       const { id: paymentRecordId, status: previousStatus, orderId } = paymentResult[0]
 
-      if (paymentStatus === 'SUCCESS') {
+      if (event.event_type === 'payment_intent.succeeded' || paymentStatus === 'succeeded') {
         if (previousStatus === 'succeeded') {
           res.json({ result: { resultCode: 'SUCCESS', resultMessage: 'success', resultStatus: 'S' } })
           return
@@ -1464,20 +1473,20 @@ export const PaymentController = {
             paymentId: paymentRecordId,
             orderId,
             eventType: 'intent_succeeded',
-            provider: 'alipay',
-            providerEventId: paymentId,
+            provider: 'airwallex',
+            providerEventId: paymentIntentId,
             amount: amountValue || null,
             currency,
             statusBefore: previousStatus,
             statusAfter: 'succeeded',
             rawData: rawBody,
-            notes: 'Antom async notification: payment succeeded',
+            notes: 'Airwallex webhook: payment succeeded',
             createdAt: new Date(),
           })
         })
 
-        console.log(`[Antom Notify] Payment succeeded: order=${orderId}, paymentId=${paymentId}`)
-      } else if (paymentStatus === 'FAILURE') {
+        console.log(`[Airwallex Notify] Payment succeeded: order=${orderId}, paymentIntentId=${paymentIntentId}`)
+      } else if (event.event_type === 'payment_intent.failed' || paymentStatus === 'failed') {
         await db.transaction(async (tx) => {
           await tx
             .update(payments)
@@ -1493,26 +1502,26 @@ export const PaymentController = {
             paymentId: paymentRecordId,
             orderId,
             eventType: 'intent_failed',
-            provider: 'alipay',
-            providerEventId: paymentId,
+            provider: 'airwallex',
+            providerEventId: paymentIntentId,
             amount: amountValue || null,
             currency,
             statusBefore: previousStatus,
             statusAfter: 'failed',
             rawData: rawBody,
-            notes: `Antom notification: payment failed - ${event.paymentResultMessage || ''}`,
+            notes: `Airwallex notification: payment failed`,
             createdAt: new Date(),
           })
         })
 
-        console.log(`[Antom Notify] Payment failed: order=${orderId}, paymentId=${paymentId}`)
+        console.log(`[Airwallex Notify] Payment failed: order=${orderId}, paymentIntentId=${paymentIntentId}`)
       } else {
-        console.log(`[Antom Notify] Unhandled payment status: ${paymentStatus}`)
+        console.log(`[Airwallex Notify] Unhandled event type / status: ${event.event_type} / ${paymentStatus}`)
       }
 
       res.json({ result: { resultCode: 'SUCCESS', resultMessage: 'success', resultStatus: 'S' } })
     } catch (error) {
-      console.error('[Antom Notify] Processing error:', error)
+      console.error('[Airwallex Notify] Processing error:', error)
       res.status(500).json({ result: { resultCode: 'ERROR', resultMessage: 'internal error', resultStatus: 'F' } })
     }
   },

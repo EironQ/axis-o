@@ -16,7 +16,12 @@ const app: Express = express()
 app.use(helmet())
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    if (!origin || origin.startsWith('http://localhost')) {
+    if (!origin || 
+        origin.startsWith('http://localhost') || 
+        origin.startsWith('http://192.168.') || 
+        origin.startsWith('http://10.') ||
+        origin.startsWith('http://172.')
+    ) {
       callback(null, true)
     } else {
       callback(new Error('Not allowed by CORS'))

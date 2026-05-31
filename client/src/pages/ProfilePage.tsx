@@ -25,26 +25,18 @@ import { orderService, Order } from '@/services/order'
 // import { wishlistService, WishlistItem } from '@/services/wishlist'
 // import { useCartStore } from '@/store/cartStore'
 import { useSettings } from '@/context/SettingsContext'
+import { useLanguage, useTranslation } from '@/i18n'
 
 type TabType = 'profile' | 'orders' | 'returns' | 'addresses' | 'wishlist' | 'password'
 
-const menuItems = [
-  { id: 'profile' as TabType, label: '个人资料', icon: User, link: null },
-  { id: 'orders' as TabType, label: '我的订单', icon: Package, link: '/orders' },
-  { id: 'addresses' as TabType, label: '收货地址', icon: MapPin, link: '/addresses' },
-  { id: 'returns' as TabType, label: '退换货记录', icon: PackageOpen, link: '/returns' },
-  // { id: 'wishlist' as TabType, label: '心愿单', icon: Heart, link: null },
-  { id: 'password' as TabType, label: '修改密码', icon: Lock, link: null },
-]
-
 const statusConfig = {
-  pending: { label: '待付款', color: 'bg-yellow-100 text-yellow-700' },
-  paid: { label: '已付款', color: 'bg-blue-100 text-blue-700' },
-  processing: { label: '处理中', color: 'bg-purple-100 text-purple-700' },
-  shipped: { label: '已发货', color: 'bg-indigo-100 text-indigo-700' },
-  delivered: { label: '已送达', color: 'bg-green-100 text-green-700' },
-  cancelled: { label: '已取消', color: 'bg-gray-100 text-gray-700' },
-  refunded: { label: '已退款', color: 'bg-red-100 text-red-700' },
+  pending: { color: 'bg-yellow-100 text-yellow-700' },
+  paid: { color: 'bg-blue-100 text-blue-700' },
+  processing: { color: 'bg-purple-100 text-purple-700' },
+  shipped: { color: 'bg-indigo-100 text-indigo-700' },
+  delivered: { color: 'bg-green-100 text-green-700' },
+  cancelled: { color: 'bg-gray-100 text-gray-700' },
+  refunded: { color: 'bg-red-100 text-red-700' },
 }
 
 const formatPrice = (price: number) => {
@@ -53,6 +45,8 @@ const formatPrice = (price: number) => {
 
 export default function ProfilePage() {
   const navigate = useNavigate()
+  const { lang } = useLanguage()
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<TabType>('profile')
   const [isLoading, setIsLoading] = useState(true)
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -97,7 +91,7 @@ export default function ProfilePage() {
     try {
       const token = localStorage.getItem('accessToken')
       if (!token) {
-        navigate('/login')
+        navigate(`/${lang}/login`)
         return
       }
 
@@ -293,7 +287,7 @@ export default function ProfilePage() {
       <div className="pt-24 pb-16 bg-[#F5F0E8]">
         <div className="mx-auto max-w-[1440px] px-8 text-center">
           <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">AXIS O</p>
-          <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">我的账户</h1>
+          <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">{t('profile.title')}</h1>
         </div>
       </div>
 
@@ -317,7 +311,13 @@ export default function ProfilePage() {
 
               <nav className="p-4">
                 <ul className="space-y-1">
-                  {menuItems.map((item) => {
+                  {[
+                    { id: 'profile' as TabType, label: t('profile.menu.profile'), icon: User, link: null },
+                    { id: 'orders' as TabType, label: t('profile.menu.orders'), icon: Package, link: '/orders' },
+                    { id: 'addresses' as TabType, label: t('profile.menu.addresses'), icon: MapPin, link: '/addresses' },
+                    { id: 'returns' as TabType, label: t('profile.menu.returns'), icon: PackageOpen, link: '/returns' },
+                    { id: 'password' as TabType, label: t('profile.menu.password'), icon: Lock, link: null },
+                  ].map((item) => {
                     const Icon = item.icon
                     const isActive = activeTab === item.id
                     return (
@@ -325,7 +325,7 @@ export default function ProfilePage() {
                         <button
                           onClick={() => {
                             if (item.link) {
-                              navigate(item.link)
+                              navigate(`/${lang}${item.link}`)
                             } else {
                               setActiveTab(item.id)
                               setMessage(null)
@@ -349,26 +349,20 @@ export default function ProfilePage() {
             </div>
 
             <div className="mt-6 p-6 bg-[#F5F0E8] border border-[#E5DDD3]">
-              <h4 className="text-sm font-medium text-[#3C2415] mb-3">账户统计</h4>
+              <h4 className="text-sm font-medium text-[#3C2415] mb-3">{t('profile.stats.title')}</h4>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-[#3C2415]/60">订单数</span>
+                  <span className="text-[#3C2415]/60">{t('profile.stats.orders')}</span>
                   <span className="text-[#3C2415]">{orders.length}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-[#3C2415]/60">收货地址</span>
+                  <span className="text-[#3C2415]/60">{t('profile.stats.addresses')}</span>
                   <span className="text-[#3C2415]">{addresses.length}</span>
                 </div>
-                {/*
-                <div className="flex justify-between">
-                  <span className="text-[#3C2415]/60">心愿单</span>
-                  <span className="text-[#3C2415]">{wishlist.length}</span>
-                </div>
-                */}
               </div>
               <div className="mt-4 pt-4 border-t border-[#E5DDD3]">
                 <div className="flex justify-between">
-                  <span className="text-[#3C2415]/60">注册时间</span>
+                  <span className="text-[#3C2415]/60">{t('profile.stats.joined')}</span>
                   <span className="text-[#3C2415] text-xs">
                     {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : '-'}
                   </span>
@@ -398,12 +392,12 @@ export default function ProfilePage() {
             {activeTab === 'profile' && (
               <div className="bg-white border border-[#E5DDD3]">
                 <div className="p-6 border-b border-[#E5DDD3]">
-                  <h2 className="text-lg font-medium text-[#3C2415]">个人资料</h2>
+                  <h2 className="text-lg font-medium text-[#3C2415]">{t('profile.menu.profile')}</h2>
                 </div>
                 <form onSubmit={handleInfoSubmit} className="p-6 space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-[#3C2415] mb-2">名字</label>
+                      <label className="block text-sm font-medium text-[#3C2415] mb-2">{t('profile.form.firstName')}</label>
                       <input
                         type="text"
                         value={formData.firstName}
@@ -414,7 +408,7 @@ export default function ProfilePage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#3C2415] mb-2">姓氏</label>
+                      <label className="block text-sm font-medium text-[#3C2415] mb-2">{t('profile.form.lastName')}</label>
                       <input
                         type="text"
                         value={formData.lastName}
@@ -427,18 +421,18 @@ export default function ProfilePage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#3C2415] mb-2">邮箱</label>
+                    <label className="block text-sm font-medium text-[#3C2415] mb-2">{t('profile.form.email')}</label>
                     <input
                       type="email"
                       value={profile?.email || ''}
                       disabled
                       className="w-full px-4 py-3 border border-[#E5DDD3] bg-[#F5F0E8] text-[#3C2415]/50 cursor-not-allowed"
                     />
-                    <p className="mt-1 text-xs text-[#3C2415]/40">邮箱无法修改</p>
+                    <p className="mt-1 text-xs text-[#3C2415]/40">{t('profile.form.emailCannotChange')}</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#3C2415] mb-2">手机号</label>
+                    <label className="block text-sm font-medium text-[#3C2415] mb-2">{t('profile.form.phone')}</label>
                     <input
                       type="tel"
                       value={formData.phone}
@@ -452,7 +446,7 @@ export default function ProfilePage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-[#3C2415] mb-2">语言偏好</label>
+                      <label className="block text-sm font-medium text-[#3C2415] mb-2">{t('profile.form.language')}</label>
                       <select
                         value={formData.preferredLanguage}
                         onChange={(e) =>
@@ -465,7 +459,7 @@ export default function ProfilePage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#3C2415] mb-2">货币</label>
+                      <label className="block text-sm font-medium text-[#3C2415] mb-2">{t('profile.form.currency')}</label>
                       <select
                         value={formData.preferredCurrency}
                         onChange={(e) =>
@@ -489,10 +483,10 @@ export default function ProfilePage() {
                     {isSubmitting ? (
                       <span className="flex items-center gap-2">
                         <Loader2 size={16} className="animate-spin" />
-                        保存中...
+                        {t('profile.form.saving')}
                       </span>
                     ) : (
-                      '保存更改'
+                      t('profile.form.saveChanges')
                     )}
                   </button>
                 </form>
@@ -502,18 +496,18 @@ export default function ProfilePage() {
             {activeTab === 'orders' && (
               <div className="bg-white border border-[#E5DDD3]">
                 <div className="p-6 border-b border-[#E5DDD3]">
-                  <h2 className="text-lg font-medium text-[#3C2415]">我的订单</h2>
+                  <h2 className="text-lg font-medium text-[#3C2415]">{t('profile.orders.title')}</h2>
                 </div>
                 <div className="divide-y divide-[#E5DDD3]">
                   {orders.length === 0 ? (
                     <div className="p-12 text-center">
                       <PackageOpen className="w-16 h-16 text-[#C89460]/40 mx-auto mb-4" />
-                      <p className="text-[#3C2415]/60">暂无订单</p>
+                      <p className="text-[#3C2415]/60">{t('profile.orders.noOrders')}</p>
                       <button
-                        onClick={() => navigate('/products')}
+                        onClick={() => navigate(`/${lang}/products`)}
                         className="mt-4 px-6 py-2 border border-[#3C2415] text-[#3C2415] text-sm font-medium hover:bg-[#3C2415] hover:text-white transition-colors"
                       >
-                        去购物
+                        {t('profile.orders.goShopping')}
                       </button>
                     </div>
                   ) : (
@@ -531,27 +525,27 @@ export default function ProfilePage() {
                               statusConfig[order.status].color
                             }`}
                           >
-                            {statusConfig[order.status].label}
+                            {t(`order.status.${order.status}`)}
                           </span>
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm mb-4">
                           <div>
-                            <span className="text-[#3C2415]/60">下单时间:</span>
+                            <span className="text-[#3C2415]/60">{t('profile.orders.orderDate')}</span>
                             <span className="ml-1 text-[#3C2415]">
                               {new Date(order.createdAt).toLocaleString()}
                             </span>
                           </div>
                           <div>
-                            <span className="text-[#3C2415]/60">商品数量:</span>
+                            <span className="text-[#3C2415]/60">{t('profile.orders.itemsCount')}</span>
                             <span className="ml-1 text-[#3C2415]">{order.items?.length ?? '-'}</span>
                           </div>
                           <div>
-                            <span className="text-[#3C2415]/60">支付方式:</span>
+                            <span className="text-[#3C2415]/60">{t('profile.orders.paymentMethod')}</span>
                             <span className="ml-1 text-[#3C2415]">-</span>
                           </div>
                           <div>
-                            <span className="text-[#3C2415]/60">订单金额:</span>
+                            <span className="text-[#3C2415]/60">{t('profile.orders.orderAmount')}</span>
                             <span className="ml-1 text-[#3C2415] font-medium">
                               {formatPrice(order.total)}
                             </span>
@@ -561,24 +555,24 @@ export default function ProfilePage() {
                         <div className="flex flex-wrap gap-2">
                           <button className="px-4 py-2 text-sm border border-[#E5DDD3] text-[#3C2415] hover:bg-[#FAF7F2] transition-colors flex items-center gap-2">
                             <Package size={14} />
-                            查看详情
+                            {t('profile.orders.viewDetails')}
                           </button>
                           {order.status === 'pending' && (
                             <button className="px-4 py-2 text-sm bg-[#3C2415] text-white hover:bg-[#2A1A0F] transition-colors flex items-center gap-2">
                               <CreditCard size={14} />
-                              去付款
+                              {t('profile.orders.payNow')}
                             </button>
                           )}
                           {order.status === 'paid' && (
                             <button className="px-4 py-2 text-sm border border-[#E5DDD3] text-[#3C2415] hover:bg-[#FAF7F2] transition-colors flex items-center gap-2">
                               <Trash2 size={14} />
-                              取消订单
+                              {t('profile.orders.cancelOrder')}
                             </button>
                           )}
                           {order.status === 'shipped' && (
                             <button className="px-4 py-2 text-sm border border-[#E5DDD3] text-[#3C2415] hover:bg-[#FAF7F2] transition-colors flex items-center gap-2">
                               <Truck size={14} />
-                              确认收货
+                              {t('profile.orders.confirmReceipt')}
                             </button>
                           )}
                         </div>
@@ -592,7 +586,7 @@ export default function ProfilePage() {
             {activeTab === 'addresses' && (
               <div className="bg-white border border-[#E5DDD3]">
                 <div className="p-6 border-b border-[#E5DDD3] flex items-center justify-between">
-                  <h2 className="text-lg font-medium text-[#3C2415]">收货地址</h2>
+                  <h2 className="text-lg font-medium text-[#3C2415]">{t('profile.addresses.title')}</h2>
                   <button
                     onClick={() => {
                       setShowAddAddress(true)
@@ -601,14 +595,14 @@ export default function ProfilePage() {
                     className="px-4 py-2 bg-[#3C2415] text-white text-sm font-medium hover:bg-[#2A1A0F] transition-colors flex items-center gap-2"
                   >
                     <Plus size={16} />
-                    添加地址
+                    {t('profile.addresses.addNew')}
                   </button>
                 </div>
 
                 {showAddAddress && (
                   <div className="p-6 border-b border-[#E5DDD3]">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-medium text-[#3C2415]">添加新地址</h3>
+                      <h3 className="text-sm font-medium text-[#3C2415]">{t('profile.addresses.addNew')}</h3>
                       <button
                         onClick={() => setShowAddAddress(false)}
                         className="text-[#3C2415]/60 hover:text-[#3C2415]"
@@ -619,7 +613,7 @@ export default function ProfilePage() {
                     <form onSubmit={handleCreateAddress} className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-[#3C2415] mb-1">名字</label>
+                          <label className="block text-sm font-medium text-[#3C2415] mb-1">{t('profile.addresses.form.firstName')}</label>
                           <input
                             type="text"
                             value={addressForm.firstName}
@@ -630,7 +624,7 @@ export default function ProfilePage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-[#3C2415] mb-1">姓氏</label>
+                          <label className="block text-sm font-medium text-[#3C2415] mb-1">{t('profile.addresses.form.lastName')}</label>
                           <input
                             type="text"
                             value={addressForm.lastName}
@@ -642,32 +636,32 @@ export default function ProfilePage() {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-[#3C2415] mb-1">地址</label>
+                        <label className="block text-sm font-medium text-[#3C2415] mb-1">{t('profile.addresses.form.line1')}</label>
                         <input
                           type="text"
                           value={addressForm.line1}
                           onChange={(e) =>
                             setAddressForm((prev) => ({ ...prev, line1: e.target.value }))
                           }
-                          placeholder="街道地址"
+                          placeholder={t('profile.addresses.form.line1')}
                           className="w-full px-4 py-2 border border-[#E5DDD3] focus:outline-none focus:border-[#C89460]"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-[#3C2415] mb-1">地址二（选填）</label>
+                        <label className="block text-sm font-medium text-[#3C2415] mb-1">{t('profile.addresses.form.line2')}</label>
                         <input
                           type="text"
                           value={addressForm.line2 || ''}
                           onChange={(e) =>
                             setAddressForm((prev) => ({ ...prev, line2: e.target.value }))
                           }
-                          placeholder="公寓/楼层"
+                          placeholder={t('profile.addresses.form.line2')}
                           className="w-full px-4 py-2 border border-[#E5DDD3] focus:outline-none focus:border-[#C89460]"
                         />
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-[#3C2415] mb-1">城市</label>
+                          <label className="block text-sm font-medium text-[#3C2415] mb-1">{t('profile.addresses.form.city')}</label>
                           <input
                             type="text"
                             value={addressForm.city}
@@ -678,7 +672,7 @@ export default function ProfilePage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-[#3C2415] mb-1">省份/州</label>
+                          <label className="block text-sm font-medium text-[#3C2415] mb-1">{t('profile.addresses.form.state')}</label>
                           <input
                             type="text"
                             value={addressForm.state || ''}
@@ -689,7 +683,7 @@ export default function ProfilePage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-[#3C2415] mb-1">邮编</label>
+                          <label className="block text-sm font-medium text-[#3C2415] mb-1">{t('profile.addresses.form.postalCode')}</label>
                           <input
                             type="text"
                             value={addressForm.postalCode}
@@ -702,7 +696,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-[#3C2415] mb-1">国家</label>
+                          <label className="block text-sm font-medium text-[#3C2415] mb-1">{t('profile.addresses.form.country')}</label>
                           <select
                             value={addressForm.country}
                             onChange={(e) =>
@@ -710,15 +704,15 @@ export default function ProfilePage() {
                             }
                             className="w-full px-4 py-2 border border-[#E5DDD3] focus:outline-none focus:border-[#C89460]"
                           >
-                            <option value="CN">中国</option>
-                            <option value="US">美国</option>
-                            <option value="GB">英国</option>
-                            <option value="DE">德国</option>
-                            <option value="FR">法国</option>
+                            <option value="CN">China</option>
+                            <option value="US">United States</option>
+                            <option value="GB">United Kingdom</option>
+                            <option value="DE">Germany</option>
+                            <option value="FR">France</option>
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-[#3C2415] mb-1">手机号</label>
+                          <label className="block text-sm font-medium text-[#3C2415] mb-1">{t('profile.addresses.form.phone')}</label>
                           <input
                             type="tel"
                             value={addressForm.phone || ''}
@@ -739,7 +733,7 @@ export default function ProfilePage() {
                           id="isDefault"
                         />
                         <label htmlFor="isDefault" className="text-sm text-[#3C2415]">
-                          设置为默认地址
+                          {t('profile.addresses.setDefault')}
                         </label>
                       </div>
                       <button
@@ -747,7 +741,7 @@ export default function ProfilePage() {
                         disabled={isSubmitting}
                         className="px-6 py-2 bg-[#3C2415] text-white text-sm font-medium hover:bg-[#2A1A0F] transition-colors"
                       >
-                        {isSubmitting ? '添加中...' : '添加地址'}
+                        {isSubmitting ? t('profile.form.saving') : t('profile.addresses.addNew')}
                       </button>
                     </form>
                   </div>
@@ -757,7 +751,7 @@ export default function ProfilePage() {
                   {addresses.length === 0 ? (
                     <div className="p-12 text-center">
                       <MapPin className="w-16 h-16 text-[#C89460]/40 mx-auto mb-4" />
-                      <p className="text-[#3C2415]/60">暂无收货地址</p>
+                      <p className="text-[#3C2415]/60">{t('profile.addresses.noAddresses')}</p>
                     </div>
                   ) : (
                     addresses.map((address) => (
@@ -766,7 +760,7 @@ export default function ProfilePage() {
                           <div className="flex-1">
                             {address.isDefault && (
                               <span className="inline-block px-2 py-0.5 bg-[#C89460] text-white text-xs rounded mb-2">
-                                默认地址
+                                {t('profile.addresses.default')}
                               </span>
                             )}
                             <div className="flex items-center gap-2 mb-2">
@@ -785,7 +779,7 @@ export default function ProfilePage() {
                               {address.state && `, ${address.state}`}
                               {address.postalCode && ` ${address.postalCode}`}
                               <br />
-                              {address.country === 'CN' ? '中国' : address.country}
+                              {address.country === 'CN' ? 'China' : address.country === 'US' ? 'United States' : address.country === 'GB' ? 'United Kingdom' : address.country === 'DE' ? 'Germany' : address.country === 'FR' ? 'France' : address.country}
                             </p>
                           </div>
                           <div className="flex flex-col gap-2">
@@ -795,19 +789,19 @@ export default function ProfilePage() {
                                 className="px-3 py-1 text-xs border border-[#E5DDD3] text-[#3C2415] hover:bg-[#FAF7F2] transition-colors flex items-center gap-1"
                               >
                                 <Check size={12} />
-                                设为默认
+                                {t('profile.addresses.setDefault')}
                               </button>
                             )}
                             <button className="px-3 py-1 text-xs border border-[#E5DDD3] text-[#3C2415] hover:bg-[#FAF7F2] transition-colors flex items-center gap-1">
                               <Edit2 size={12} />
-                              编辑
+                              {t('profile.addresses.edit')}
                             </button>
                             <button
                               onClick={() => handleDeleteAddress(address.id)}
                               className="px-3 py-1 text-xs border border-red-200 text-red-600 hover:bg-red-50 transition-colors flex items-center gap-1"
                             >
                               <Trash2 size={12} />
-                              删除
+                              {t('profile.addresses.delete')}
                             </button>
                           </div>
                         </div>
@@ -821,11 +815,11 @@ export default function ProfilePage() {
             {activeTab === 'password' && (
               <div className="bg-white border border-[#E5DDD3]">
                 <div className="p-6 border-b border-[#E5DDD3]">
-                  <h2 className="text-lg font-medium text-[#3C2415]">修改密码</h2>
+                  <h2 className="text-lg font-medium text-[#3C2415]">{t('profile.password.title')}</h2>
                 </div>
                 <form onSubmit={handlePasswordSubmit} className="p-6 space-y-6 max-w-md">
                   <div>
-                    <label className="block text-sm font-medium text-[#3C2415] mb-2">当前密码</label>
+                    <label className="block text-sm font-medium text-[#3C2415] mb-2">{t('profile.password.current')}</label>
                     <input
                       type="password"
                       value={passwordData.currentPassword}
@@ -833,12 +827,12 @@ export default function ProfilePage() {
                         setPasswordData((prev) => ({ ...prev, currentPassword: e.target.value }))
                       }
                       className="w-full px-4 py-3 border border-[#E5DDD3] bg-white text-[#3C2415] focus:outline-none focus:border-[#C89460] transition-colors"
-                      placeholder="输入当前密码"
+                      placeholder={t('profile.password.currentPlaceholder')}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#3C2415] mb-2">新密码</label>
+                    <label className="block text-sm font-medium text-[#3C2415] mb-2">{t('profile.password.new')}</label>
                     <input
                       type="password"
                       value={passwordData.newPassword}
@@ -846,12 +840,12 @@ export default function ProfilePage() {
                         setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))
                       }
                       className="w-full px-4 py-3 border border-[#E5DDD3] bg-white text-[#3C2415] focus:outline-none focus:border-[#C89460] transition-colors"
-                      placeholder="至少8个字符"
+                      placeholder={t('profile.password.newPlaceholder')}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-[#3C2415] mb-2">确认新密码</label>
+                    <label className="block text-sm font-medium text-[#3C2415] mb-2">{t('profile.password.confirm')}</label>
                     <input
                       type="password"
                       value={passwordData.confirmPassword}
@@ -859,7 +853,7 @@ export default function ProfilePage() {
                         setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))
                       }
                       className="w-full px-4 py-3 border border-[#E5DDD3] bg-white text-[#3C2415] focus:outline-none focus:border-[#C89460] transition-colors"
-                      placeholder="再次输入新密码"
+                      placeholder={t('profile.password.confirmPlaceholder')}
                     />
                   </div>
 
@@ -871,10 +865,10 @@ export default function ProfilePage() {
                     {isSubmitting ? (
                       <span className="flex items-center gap-2">
                         <Loader2 size={16} className="animate-spin" />
-                        修改中...
+                        {t('profile.password.changing')}
                       </span>
                     ) : (
-                      '修改密码'
+                      t('profile.password.change')
                     )}
                   </button>
                 </form>

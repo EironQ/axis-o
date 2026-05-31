@@ -3,34 +3,29 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Package, Clock, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { returnService, ReturnRequest } from '@/services/return'
 import { uploadService } from '@/services/uploadService'
+import { useLanguage, useTranslation } from '@/i18n'
+import type { TranslationKey } from '@/i18n/types'
 
-const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  pending: { label: '待审核', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
-  approved: { label: '已批准', color: 'bg-blue-100 text-blue-700', icon: CheckCircle },
-  rejected: { label: '已拒绝', color: 'bg-red-100 text-red-700', icon: XCircle },
-  processing: { label: '处理中', color: 'bg-purple-100 text-purple-700', icon: Clock },
-  completed: { label: '已完成', color: 'bg-green-100 text-green-700', icon: CheckCircle },
-  cancelled: { label: '已取消', color: 'bg-gray-100 text-gray-600', icon: XCircle },
+const statusConfig: Record<string, { color: string; icon: typeof Clock }> = {
+  pending: { color: 'bg-yellow-100 text-yellow-700', icon: Clock },
+  approved: { color: 'bg-blue-100 text-blue-700', icon: CheckCircle },
+  rejected: { color: 'bg-red-100 text-red-700', icon: XCircle },
+  processing: { color: 'bg-purple-100 text-purple-700', icon: Clock },
+  completed: { color: 'bg-green-100 text-green-700', icon: CheckCircle },
+  cancelled: { color: 'bg-gray-100 text-gray-600', icon: XCircle },
 }
 
-const typeConfig: Record<string, { label: string; color: string }> = {
-  return: { label: '退货', color: 'bg-orange-100 text-orange-700' },
-  exchange: { label: '换货', color: 'bg-teal-100 text-teal-700' },
-  refund: { label: '退款', color: 'bg-pink-100 text-pink-700' },
-}
-
-const reasonConfig: Record<string, string> = {
-  defective: '商品质量问题',
-  wrong_item: '发错商品',
-  not_as_described: '与描述不符',
-  changed_mind: '个人原因',
-  arrived_late: '送达超时',
-  other: '其他原因',
+const typeConfig: Record<string, { color: string }> = {
+  return: { color: 'bg-orange-100 text-orange-700' },
+  exchange: { color: 'bg-teal-100 text-teal-700' },
+  refund: { color: 'bg-pink-100 text-pink-700' },
 }
 
 export default function ReturnDetailPage() {
   const { returnId } = useParams<{ returnId: string }>()
   const navigate = useNavigate()
+  const { lang } = useLanguage()
+  const { t } = useTranslation()
   const [returnData, setReturnData] = useState<ReturnRequest | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +34,7 @@ export default function ReturnDetailPage() {
   useEffect(() => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
-      navigate('/login')
+      navigate(`/${lang}/login`)
       return
     }
     if (returnId) {
@@ -65,17 +60,17 @@ export default function ReturnDetailPage() {
   }
 
   const handleCancel = async () => {
-    if (!returnId || !window.confirm('确定要取消这个退换货申请吗？')) return
+    if (!returnId || !window.confirm(t('return.detail.confirmCancel'))) return
     setIsCancelling(true)
     try {
       const response = await returnService.cancel(returnId)
       if (response.success) {
-        navigate('/returns')
+        navigate(`/${lang}/returns`)
       } else {
-        alert(response.error?.message || '取消失败')
+        alert(response.error?.message || t('return.detail.cancelFailed'))
       }
     } catch {
-      alert('网络错误，请稍后重试')
+      alert(lang === 'zh' ? '网络错误，请稍后重试' : 'Network error, please try again later')
     } finally {
       setIsCancelling(false)
     }
@@ -83,7 +78,7 @@ export default function ReturnDetailPage() {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-'
-    return new Date(dateString).toLocaleString('zh-CN', {
+    return new Date(dateString).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -110,7 +105,7 @@ export default function ReturnDetailPage() {
             onClick={() => returnId && loadReturn(returnId)}
             className="px-6 py-2 bg-[#8B7355] text-white rounded-lg hover:bg-[#6B5344] transition-colors"
           >
-            重试
+            {t('common.retry')}
           </button>
         </div>
       </div>
@@ -128,25 +123,25 @@ export default function ReturnDetailPage() {
       <div className="max-w-3xl mx-auto px-4">
         <div className="flex items-center gap-4 mb-6">
           <button
-            onClick={() => navigate('/returns')}
+            onClick={() => navigate(`/${lang}/returns`)}
             className="flex items-center gap-2 text-gray-600 hover:text-[#8B7355] transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            返回列表
+            {t('return.detail.backToList')}
           </button>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <div className="flex items-start justify-between mb-6">
             <div>
-              <h1 className="text-xl font-bold text-[#3C2415] mb-3">退换货详情</h1>
+              <h1 className="text-xl font-bold text-[#3C2415] mb-3">{t('return.detail.title')}</h1>
               <div className="flex items-center gap-3">
                 <span className={`px-4 py-2 rounded-lg text-sm font-medium ${typeConfig[returnData.type]?.color}`}>
-                  {typeConfig[returnData.type]?.label}申请
+                  {t(`return.type.${returnData.type}`)}{t('return.detail.request')}
                 </span>
                 <span className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${statusConfig[returnData.status]?.color}`}>
                   <StatusIcon className="w-4 h-4" />
-                  {statusConfig[returnData.status]?.label}
+                  {t(`return.status.${returnData.status}`)}
                 </span>
               </div>
             </div>
@@ -156,7 +151,7 @@ export default function ReturnDetailPage() {
                 disabled={isCancelling}
                 className="px-4 py-2 text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
               >
-                {isCancelling ? '取消中...' : '取消申请'}
+                {isCancelling ? t('return.detail.cancelling') : t('return.detail.cancel')}
               </button>
             )}
           </div>
@@ -165,7 +160,7 @@ export default function ReturnDetailPage() {
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
                 <Package className="w-4 h-4" />
-                订单信息
+                {t('return.detail.orderInfo')}
               </div>
               <p className="text-[#3C2415] font-medium">
                 {returnData.orderNumber || returnData.orderId}
@@ -174,17 +169,17 @@ export default function ReturnDetailPage() {
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
                 <Clock className="w-4 h-4" />
-                申请时间
+                {t('return.detail.requestDate')}
               </div>
               <p className="text-[#3C2415] font-medium">{formatDate(returnData.createdAt)}</p>
             </div>
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="font-medium text-[#3C2415] mb-4">申请原因</h3>
+            <h3 className="font-medium text-[#3C2415] mb-4">{t('return.detail.reason')}</h3>
             <div className="flex items-center gap-3 mb-3">
               <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">
-                {reasonConfig[returnData.reason]}
+                {t(`return.reason.${returnData.reason}`)}
               </span>
             </div>
             {returnData.reasonDetail && (
@@ -197,7 +192,7 @@ export default function ReturnDetailPage() {
 
         {returnData.items && returnData.items.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <h3 className="font-medium text-[#3C2415] mb-4">申请商品</h3>
+            <h3 className="font-medium text-[#3C2415] mb-4">{t('return.detail.items')}</h3>
             <div className="space-y-4">
               {returnData.items.map((item) => (
                 <div key={item.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
@@ -217,9 +212,9 @@ export default function ReturnDetailPage() {
                     )}
                   </div>
                   <div className="text-right">
-                    <p className="text-gray-600">数量: {item.quantity}</p>
+                    <p className="text-gray-600">{t('return.detail.quantity')}: {item.quantity}</p>
                     {item.newVariantId && (
-                      <p className="text-sm text-blue-600 mt-1">更换规格</p>
+                      <p className="text-sm text-blue-600 mt-1">{t('return.detail.changeVariant')}</p>
                     )}
                   </div>
                 </div>
@@ -230,11 +225,11 @@ export default function ReturnDetailPage() {
 
         {returnData.images && returnData.images.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <h3 className="font-medium text-[#3C2415] mb-4">凭证图片</h3>
+            <h3 className="font-medium text-[#3C2415] mb-4">{t('return.detail.images')}</h3>
             <div className="grid grid-cols-3 gap-4">
               {returnData.images.map((image, index) => (
                 <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                  <img src={image} alt={`凭证 ${index + 1}`} className="w-full h-full object-cover" />
+                  <img src={image} alt={t('return.detail.imageAlt', { index: index + 1 })} className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
@@ -243,7 +238,7 @@ export default function ReturnDetailPage() {
 
         {returnData.adminNote && (
           <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <h3 className="font-medium text-[#3C2415] mb-2">管理员备注</h3>
+            <h3 className="font-medium text-[#3C2415] mb-2">{t('return.detail.adminNote')}</h3>
             <p className="text-gray-600 bg-yellow-50 rounded-lg p-4">
               {returnData.adminNote}
             </p>
@@ -252,25 +247,29 @@ export default function ReturnDetailPage() {
 
         {returnData.logs && returnData.logs.length > 0 && (
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h3 className="font-medium text-[#3C2415] mb-4">处理日志</h3>
+            <h3 className="font-medium text-[#3C2415] mb-4">{t('return.detail.logs')}</h3>
             <div className="space-y-3">
-              {returnData.logs.map((log) => (
+              {returnData.logs.map((log) => {
+                const fromStatusLabel = log.fromStatus ? t(`return.status.${log.fromStatus}` as TranslationKey) : ''
+                const toStatusLabel = log.toStatus ? t(`return.status.${log.toStatus}` as TranslationKey) : ''
+                return (
                 <div key={log.id} className="flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full bg-[#8B7355] mt-2" />
                   <div className="flex-1">
                     <p className="text-[#3C2415]">
-                      {log.action === 'created' && '创建申请'}
-                      {log.action === 'status_changed' && `状态变更: ${log.fromStatus} → ${log.toStatus}`}
-                      {log.action === 'note_added' && '添加备注'}
-                      {log.action === 'image_added' && '上传图片'}
-                      {log.action === 'refund_initiated' && '发起退款'}
-                      {log.action === 'refund_completed' && '退款完成'}
+                      {log.action === 'created' && t('return.log.created')}
+                      {log.action === 'status_changed' && t('return.log.statusChanged', { from: fromStatusLabel, to: toStatusLabel })}
+                      {log.action === 'note_added' && t('return.log.noteAdded')}
+                      {log.action === 'image_added' && t('return.log.imageAdded')}
+                      {log.action === 'refund_initiated' && t('return.log.refundInitiated')}
+                      {log.action === 'refund_completed' && t('return.log.refundCompleted')}
                       {log.note && ` - ${log.note}`}
                     </p>
                     <p className="text-sm text-gray-500">{formatDate(log.createdAt)}</p>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}

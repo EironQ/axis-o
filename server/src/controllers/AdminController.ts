@@ -3,7 +3,7 @@ import { db } from '../config/database'
 import { users, orders, products } from '../db/schema'
 import { eq, and, count, sum, desc, sql } from 'drizzle-orm'
 import { hashPassword, comparePassword } from '../utils/password'
-import { signAccessToken, signRefreshToken } from '../utils/jwt'
+import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt'
 import { env } from '../config/env'
 import { v4 as uuidv4 } from '../utils/uuid'
 
@@ -58,6 +58,42 @@ export const AdminController = {
     } catch (error) {
       console.error('Admin login error:', error)
       res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Login failed' } })
+    }
+  },
+
+  refreshToken: async (req: Request, res: Response) => {
+    try {
+      const { refreshToken } = req.body
+
+      if (!refreshToken) {
+        res.status(401).json({ success: false, error: { code: 'MISSING_TOKEN', message: 'Refresh token is required' } })
+        return
+      }
+
+      const decoded = verifyRefreshToken(refreshToken)
+      if (!decoded) {
+        res.status(401).json({ success: false, error: { code: 'INVALID_TOKEN', message: 'Invalid refresh token' } })
+        return
+      }
+
+      if (decoded.role !== 'admin' && decoded.role !== 'super_admin') {
+        res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'Admin access required' } })
+        return
+      }
+
+      const accessToken = signAccessToken(decoded, env.JWT_ADMIN_EXPIRES_IN)
+      const newRefreshToken = signRefreshToken(decoded)
+
+      res.json({
+        success: true,
+        data: {
+          accessToken,
+          refreshToken: newRefreshToken,
+        },
+      })
+    } catch (error) {
+      console.error('Admin refresh token error:', error)
+      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Token refresh failed' } })
     }
   },
 

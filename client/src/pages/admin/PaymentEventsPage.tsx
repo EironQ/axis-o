@@ -33,7 +33,7 @@ const EVENT_TYPE_CONFIG: Record<string, { label: string; color: string; icon: st
 const PROVIDER_CONFIG: Record<string, { label: string; color: string }> = {
   stripe: { label: 'Stripe', color: 'bg-[#635BFF] text-white' },
   paypal: { label: 'PayPal', color: 'bg-[#003087] text-white' },
-  alipay: { label: 'Alipay', color: 'bg-[#1677FF] text-white' },
+  airwallex: { label: 'Airwallex', color: 'bg-[#FF6B35] text-white' },
 }
 
 const getAuthHeaders = () => {

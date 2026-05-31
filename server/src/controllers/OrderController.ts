@@ -1,8 +1,12 @@
 import { Request, Response } from 'express'
 import { db } from '../config/database'
-import { orders, orderItems, cartItems, productVariants, products, productImages, addresses, discountCodes, payments, shipments, users } from '../db/schema'
-import { eq, and, sql, desc } from 'drizzle-orm'
+import { orders, orderItems, cartItems, productVariants, products, productImages, addresses, discountCodes, payments, shipments, users, paymentEvents, returns } from '../db/schema'
+import { eq, and, sql, desc, exists } from 'drizzle-orm'
 import { v4 as uuidv4 } from '../utils/uuid'
+import { getCachedSetting } from '../services/settingsCache'
+import { StripeService } from '../services/payment/stripe'
+import { PayPalService } from '../services/payment/paypal'
+import { AirwallexService } from '../services/payment/airwallex'
 
 export const OrderController = {
   list: async (req: Request, res: Response) => {
@@ -23,6 +27,9 @@ export const OrderController = {
           paidAt: orders.paidAt,
           shippedAt: orders.shippedAt,
           deliveredAt: orders.deliveredAt,
+          hasReturnRequest: exists(
+            db.select().from(returns).where(eq(returns.orderId, orders.id))
+          ),
         })
         .from(orders)
         .where(eq(orders.userId, userId))
@@ -209,10 +216,10 @@ export const OrderController = {
           colorHex: productVariants.colorHex,
           size: productVariants.size,
           priceAdjustment: productVariants.priceAdjustment,
-          stockQuantity: productVariants.stockQuantity,
           productNameEn: products.nameEn,
           productNameZh: products.nameZh,
           basePrice: products.basePrice,
+          productStock: products.stock,
         })
         .from(cartItems)
         .innerJoin(productVariants, eq(cartItems.variantId, productVariants.id))
@@ -222,6 +229,19 @@ export const OrderController = {
       if (cartItemsResult.length === 0) {
         res.status(400).json({ success: false, error: { code: 'EMPTY_CART', message: 'Cart is empty' } })
         return
+      }
+
+      const stockByProduct = new Map<string, { needed: number; stock: number }>()
+      for (const item of cartItemsResult) {
+        const entry = stockByProduct.get(item.productId) || { needed: 0, stock: Number(item.productStock) || 0 }
+        entry.needed += item.quantity
+        stockByProduct.set(item.productId, entry)
+      }
+      for (const [productId, info] of stockByProduct) {
+        if (info.needed > info.stock) {
+          res.status(400).json({ success: false, error: { code: 'INSUFFICIENT_STOCK', message: `Insufficient stock for product ${productId}` } })
+          return
+        }
       }
 
       let discountAmount = 0
@@ -260,9 +280,12 @@ export const OrderController = {
         }
       })
 
-      const shippingCost = shippingMethod === 'express' ? 50 : 0
-      const taxAmount = subtotal * 0.08
-      let total = subtotal + shippingCost + taxAmount - discountAmount
+      const shippingCost = shippingMethod === 'express' ? (() => {
+        const fee = parseFloat(getCachedSetting('shipping_fee'))
+        return isNaN(fee) ? 50 : fee
+      })() : 0
+      const taxAmount = 0
+      let total = subtotal + shippingCost - discountAmount
       total = parseFloat(total.toFixed(2))
 
       const orderId = uuidv4()
@@ -290,6 +313,12 @@ export const OrderController = {
         })
 
         await tx.insert(orderItems).values(orderItemsData.map(item => ({ ...item, orderId })))
+
+        for (const [productId, info] of stockByProduct) {
+          await tx.update(products)
+            .set({ stock: sql`stock - ${info.needed}` } as any)
+            .where(eq(products.id, productId))
+        }
 
         await tx.delete(cartItems).where(eq(cartItems.userId, userId))
       })
@@ -333,7 +362,18 @@ export const OrderController = {
         return
       }
 
-      await db.update(orders).set({ status: 'cancelled', cancelledAt: new Date(), updatedAt: new Date() }).where(eq(orders.id, orderId))
+      await db.transaction(async (tx) => {
+        const items = await tx.select({ productId: orderItems.productId, quantity: orderItems.quantity })
+          .from(orderItems).where(eq(orderItems.orderId, orderId))
+
+        for (const item of items) {
+          await tx.update(products)
+            .set({ stock: sql`stock + ${item.quantity}` } as any)
+            .where(eq(products.id, item.productId))
+        }
+
+        await tx.update(orders).set({ status: 'cancelled', cancelledAt: new Date(), updatedAt: new Date() }).where(eq(orders.id, orderId))
+      })
 
       res.json({ success: true, data: { orderId, status: 'cancelled' } })
     } catch (error) {
@@ -598,13 +638,30 @@ export const OrderController = {
         return
       }
 
+      const prevStatus = existing[0].status
+      const isNewCancelOrRefund = (status === 'cancelled' || status === 'refunded') &&
+        prevStatus !== 'cancelled' && prevStatus !== 'refunded'
+
       const updateData: Record<string, any> = { status, updatedAt: new Date() }
       if (status === 'paid') updateData.paidAt = new Date()
       if (status === 'shipped') updateData.shippedAt = new Date()
       if (status === 'delivered') updateData.deliveredAt = new Date()
       if (status === 'cancelled') updateData.cancelledAt = new Date()
 
-      await db.update(orders).set(updateData).where(eq(orders.id, orderId))
+      await db.transaction(async (tx) => {
+        await tx.update(orders).set(updateData).where(eq(orders.id, orderId))
+
+        if (isNewCancelOrRefund) {
+          const items = await tx.select({ productId: orderItems.productId, quantity: orderItems.quantity })
+            .from(orderItems).where(eq(orderItems.orderId, orderId))
+
+          for (const item of items) {
+            await tx.update(products)
+              .set({ stock: sql`stock + ${item.quantity}` } as any)
+              .where(eq(products.id, item.productId))
+          }
+        }
+      })
 
       if (trackingNumber && status === 'shipped') {
         const existingShipment = await db.select({ id: shipments.id }).from(shipments).where(eq(shipments.orderId, orderId)).limit(1)
@@ -627,6 +684,184 @@ export const OrderController = {
     } catch (error) {
       console.error('Admin update order status error:', error)
       res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to update order status' } })
+    }
+  },
+
+  adminRefund: async (req: Request, res: Response) => {
+    try {
+      const orderId = req.params.id as string
+      const adminId = req.user!.userId
+      const { refundAmount, note } = req.body
+
+      const orderResult = await db
+        .select({
+          id: orders.id,
+          orderNumber: orders.orderNumber,
+          status: orders.status,
+          total: orders.total,
+          currency: orders.currency,
+        })
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1)
+
+      if (orderResult.length === 0) {
+        res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Order not found' } })
+        return
+      }
+
+      const order = orderResult[0]
+
+      if (order.status !== 'paid' && order.status !== 'processing' && order.status !== 'shipped') {
+        res.status(400).json({ success: false, error: { code: 'INVALID_STATUS', message: `Cannot refund order with status: ${order.status}` } })
+        return
+      }
+
+      const paymentResult = await db
+        .select({
+          id: payments.id,
+          transactionId: payments.transactionId,
+          status: payments.status,
+          provider: payments.provider,
+          amount: payments.amount,
+          currency: payments.currency,
+        })
+        .from(payments)
+        .where(eq(payments.orderId, orderId))
+        .orderBy(desc(payments.createdAt))
+        .limit(1)
+
+      if (paymentResult.length === 0) {
+        res.status(400).json({ success: false, error: { code: 'NO_PAYMENT', message: 'No payment found for this order' } })
+        return
+      }
+
+      const payment = paymentResult[0]
+
+      if (payment.status !== 'succeeded') {
+        res.status(400).json({ success: false, error: { code: 'INVALID_PAYMENT_STATUS', message: `Payment status is ${payment.status}, cannot refund` } })
+        return
+      }
+
+      if (!payment.transactionId) {
+        res.status(400).json({ success: false, error: { code: 'NO_TRANSACTION', message: 'No transaction ID found for this payment' } })
+        return
+      }
+
+      const amountToRefund = refundAmount && refundAmount > 0 
+        ? parseFloat(refundAmount.toString()) 
+        : parseFloat(order.total.toString())
+
+      if (amountToRefund > parseFloat(order.total.toString())) {
+        res.status(400).json({ success: false, error: { code: 'INVALID_AMOUNT', message: 'Refund amount cannot exceed order total' } })
+        return
+      }
+
+      await db.insert(paymentEvents).values({
+        id: uuidv4(),
+        paymentId: payment.id,
+        orderId,
+        eventType: 'refund_requested',
+        provider: payment.provider,
+        providerEventId: payment.transactionId,
+        amount: amountToRefund.toString(),
+        currency: order.currency,
+        statusBefore: payment.status,
+        notes: note || `Admin refund requested for order #${order.orderNumber}`,
+        createdAt: new Date(),
+      })
+
+      let refundResult: { id: string; status: string | null }
+      try {
+        if (payment.provider === 'stripe') {
+          refundResult = await StripeService.createRefund(payment.transactionId, amountToRefund)
+        } else if (payment.provider === 'paypal') {
+          refundResult = await PayPalService.createRefund(payment.transactionId, amountToRefund, order.currency)
+        } else if (payment.provider === 'airwallex') {
+          refundResult = await AirwallexService.createRefund(payment.transactionId, amountToRefund, order.currency)
+        } else {
+          throw new Error(`Refund not supported for provider: ${payment.provider}`)
+        }
+      } catch (payError) {
+        console.error(`[Admin Refund] Payment gateway refund failed:`, payError)
+        await db.insert(paymentEvents).values({
+          id: uuidv4(),
+          paymentId: payment.id,
+          orderId,
+          eventType: 'refund_failed',
+          provider: payment.provider,
+          providerEventId: payment.transactionId,
+          amount: amountToRefund.toString(),
+          currency: order.currency,
+          statusBefore: payment.status,
+          notes: `Refund failed: ${(payError as Error).message}`,
+          createdAt: new Date(),
+        })
+        throw payError
+      }
+
+      const isPartial = amountToRefund < parseFloat(order.total.toString())
+      const refundStatus = isPartial ? 'partially_refunded' as const : 'refunded' as const
+      const orderRefundStatus = isPartial ? order.status : 'refunded' as const
+
+      await db.transaction(async (tx) => {
+        await tx
+          .update(payments)
+          .set({ status: refundStatus, updatedAt: new Date() })
+          .where(eq(payments.id, payment.id))
+
+        if (!isPartial) {
+          await tx
+            .update(orders)
+            .set({ status: orderRefundStatus, updatedAt: new Date() })
+            .where(eq(orders.id, orderId))
+
+          const items = await tx.select({ productId: orderItems.productId, quantity: orderItems.quantity })
+            .from(orderItems).where(eq(orderItems.orderId, orderId))
+
+          for (const item of items) {
+            await tx.update(products)
+              .set({ stock: sql`stock + ${item.quantity}` } as any)
+              .where(eq(products.id, item.productId))
+          }
+        }
+
+        await tx.insert(paymentEvents).values({
+          id: uuidv4(),
+          paymentId: payment.id,
+          orderId,
+          eventType: 'refund_succeeded',
+          provider: payment.provider,
+          providerEventId: refundResult.id,
+          amount: amountToRefund.toString(),
+          currency: order.currency,
+          statusBefore: payment.status,
+          statusAfter: refundStatus,
+          rawData: JSON.stringify({ refund_id: refundResult.id, status: refundResult.status }),
+          notes: isPartial ? `Partial refund: ${amountToRefund} ${order.currency}` : 'Full refund processed',
+          createdAt: new Date(),
+        })
+      })
+
+      res.json({
+        success: true,
+        data: {
+          orderId,
+          orderNumber: order.orderNumber,
+          status: refundStatus,
+          refundId: refundResult.id,
+          refundAmount: amountToRefund,
+          currency: order.currency,
+          isPartial,
+        },
+        message: isPartial ? 'Partial refund processed successfully' : 'Refund processed successfully',
+      })
+    } catch (error) {
+      console.error('Admin refund error:', error)
+      res.status(500).json({ 
+        success: false, 
+        error: { code: 'INTERNAL_ERROR', message: (error as Error).message || 'Failed to process refund' } 
+      })
     }
   },
 }

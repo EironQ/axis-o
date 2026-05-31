@@ -10,6 +10,7 @@ export interface Product {
   series: 'classic' | 'luxe' | 'travel'
   description: string
   price: number
+  stock: number
   colors: ProductColor[]
   sizes: string[]
   material: string
@@ -147,7 +148,7 @@ export interface OrderItem {
   totalPrice: number
 }
 
-export type PaymentProvider = 'stripe' | 'paypal' | 'alipay'
+export type PaymentProvider = 'stripe' | 'paypal' | 'airwallex'
 export type PaymentStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'refunded' | 'partially_refunded'
 
 export interface Payment {

@@ -54,18 +54,37 @@ interface PayPalWebhookEvent {
 
 let accessTokenCache: { token: string; expiresAt: number } | null = null
 
+function isPlaceholderCredential(value: string): boolean {
+  return !value || value.startsWith('your-') || value === 'placeholder' || value === 'test'
+}
+
 async function resolveClientId(): Promise<string> {
   const cached = getCachedSetting('paypal_client_id')
-  if (cached) return cached
+  if (cached && !isPlaceholderCredential(cached)) return cached
   const fresh = await getSetting('paypal_client_id')
-  return fresh || env.PAYPAL_CLIENT_ID
+  if (fresh && !isPlaceholderCredential(fresh)) return fresh
+  if (env.PAYPAL_CLIENT_ID && !isPlaceholderCredential(env.PAYPAL_CLIENT_ID)) return env.PAYPAL_CLIENT_ID
+  return ''
 }
 
 async function resolveClientSecret(): Promise<string> {
   const cached = getCachedSetting('paypal_client_secret')
-  if (cached) return cached
+  if (cached && !isPlaceholderCredential(cached)) return cached
   const fresh = await getSetting('paypal_client_secret')
-  return fresh || env.PAYPAL_CLIENT_SECRET
+  if (fresh && !isPlaceholderCredential(fresh)) return fresh
+  if (env.PAYPAL_CLIENT_SECRET && !isPlaceholderCredential(env.PAYPAL_CLIENT_SECRET)) return env.PAYPAL_CLIENT_SECRET
+  return ''
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 15000): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal })
+    return response
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 function isSandbox(): boolean {
@@ -81,10 +100,11 @@ function getBaseUrl(): string {
 }
 
 export async function getPayPalClientId(): Promise<string> {
-  const publised = getCachedSetting('paypal_client_id')
-  if (publised) return publised
+  const published = getCachedSetting('paypal_client_id')
+  if (published && !isPlaceholderCredential(published)) return published
   const fresh = await getSetting('paypal_client_id')
-  return fresh || env.PAYPAL_CLIENT_ID
+  if (fresh && !isPlaceholderCredential(fresh)) return fresh
+  return env.PAYPAL_CLIENT_ID
 }
 
 async function getAccessToken(): Promise<string> {
@@ -97,27 +117,37 @@ async function getAccessToken(): Promise<string> {
   const clientSecret = await resolveClientSecret()
 
   if (!clientId || !clientSecret) {
-    throw new Error('PayPal credentials are not configured. Please set them in Admin Settings > Payment.')
+    throw new Error('PayPal 支付凭证未配置，请在后台管理 > 支付设置中配置有效的 PayPal Client ID 和 Secret')
   }
 
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
 
-  const response = await fetch(`${getBaseUrl()}/v1/oauth2/token`, {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Authorization': `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`PayPal OAuth failed: ${response.status} ${errorText}`)
+  let oauthResponse: Response
+  try {
+    oauthResponse = await fetchWithTimeout(`${getBaseUrl()}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
+    })
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('PayPal 服务连接超时，请稍后重试')
+    }
+    throw new Error('无法连接到 PayPal 服务，请检查网络连接')
   }
 
-  const data = (await response.json()) as PayPalAccessToken
+  if (!oauthResponse.ok) {
+    const errorData = await oauthResponse.json().catch(() => ({ error: 'Unknown error' }))
+    const errorMessage = errorData.error_description || errorData.error || 'Unknown authentication error'
+    console.error(`[PayPal] Authentication failed: ${oauthResponse.status} - ${errorMessage}`)
+    throw new Error(`PayPal 认证失败: ${errorMessage}`)
+  }
+
+  const data = (await oauthResponse.json()) as PayPalAccessToken
   accessTokenCache = {
     token: data.access_token,
     expiresAt: now + (data.expires_in - 60) * 1000,
@@ -139,8 +169,12 @@ export interface PayPalOrderResult {
   status: string
 }
 
-function convertCurrency(amount: number, _currency: string): { amount: string; currency: string } {
-  return { amount: amount.toFixed(2), currency: 'USD' }
+const SUPPORTED_CURRENCIES = ['USD', 'CNY', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD']
+
+function convertCurrency(amount: number, currency: string): { amount: string; currency: string } {
+  const normalizedCurrency = currency.toUpperCase()
+  const validCurrency = SUPPORTED_CURRENCIES.includes(normalizedCurrency) ? normalizedCurrency : 'USD'
+  return { amount: amount.toFixed(2), currency: validCurrency }
 }
 
 export class PayPalService {
@@ -181,22 +215,32 @@ export class PayPalService {
       },
     }
 
-    const response = await fetch(`${getBaseUrl()}/v2/checkout/orders`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-        'PayPal-Request-Id': `${params.orderId}-${Date.now()}`,
-      },
-      body: JSON.stringify(body),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`PayPal create order failed: ${response.status} ${errorText}`)
+    let createResponse: Response
+    try {
+      createResponse = await fetchWithTimeout(`${getBaseUrl()}/v2/checkout/orders`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+          'PayPal-Request-Id': `${params.orderId}-${Date.now()}`,
+        },
+        body: JSON.stringify(body),
+      })
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error('PayPal 创建订单超时，请稍后重试')
+      }
+      throw new Error('无法连接到 PayPal 服务，请检查网络连接')
     }
 
-    const data = (await response.json()) as PayPalOrderResponse
+    if (!createResponse.ok) {
+      const errorData = await createResponse.json().catch(() => ({ details: [] }))
+      const errorMessage = errorData.details?.[0]?.description || errorData.message || 'Unknown error'
+      console.error(`[PayPal] createOrder failed: ${createResponse.status} - ${errorMessage}`)
+      throw new Error(`PayPal 创建订单失败: ${errorMessage}`)
+    }
+
+    const data = (await createResponse.json()) as PayPalOrderResponse
 
     return {
       paypalOrderId: data.id,
@@ -207,40 +251,60 @@ export class PayPalService {
   static async captureOrder(paypalOrderId: string): Promise<PayPalCaptureResponse> {
     const accessToken = await getAccessToken()
 
-    const response = await fetch(`${getBaseUrl()}/v2/checkout/orders/${paypalOrderId}/capture`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`PayPal capture order failed: ${response.status} ${errorText}`)
+    let captureResponse: Response
+    try {
+      captureResponse = await fetchWithTimeout(`${getBaseUrl()}/v2/checkout/orders/${paypalOrderId}/capture`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error('PayPal 支付捕获超时，请稍后重试')
+      }
+      throw new Error('无法连接到 PayPal 服务，请检查网络连接')
     }
 
-    const data = (await response.json()) as PayPalCaptureResponse
+    if (!captureResponse.ok) {
+      const errorData = await captureResponse.json().catch(() => ({ details: [] }))
+      const errorMessage = errorData.details?.[0]?.description || errorData.message || 'Unknown error'
+      console.error(`[PayPal] captureOrder failed: ${captureResponse.status} - ${errorMessage}`)
+      throw new Error(`PayPal 支付捕获失败: ${errorMessage}`)
+    }
+
+    const data = (await captureResponse.json()) as PayPalCaptureResponse
     return data
   }
 
   static async getOrder(paypalOrderId: string): Promise<PayPalOrderResponse> {
     const accessToken = await getAccessToken()
 
-    const response = await fetch(`${getBaseUrl()}/v2/checkout/orders/${paypalOrderId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`PayPal get order failed: ${response.status} ${errorText}`)
+    let getResponse: Response
+    try {
+      getResponse = await fetchWithTimeout(`${getBaseUrl()}/v2/checkout/orders/${paypalOrderId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      })
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error('PayPal 查询订单超时，请稍后重试')
+      }
+      throw new Error('无法连接到 PayPal 服务，请检查网络连接')
     }
 
-    const data = (await response.json()) as PayPalOrderResponse
+    if (!getResponse.ok) {
+      const errorData = await getResponse.json().catch(() => ({ details: [] }))
+      const errorMessage = errorData.details?.[0]?.description || errorData.message || 'Unknown error'
+      console.error(`[PayPal] getOrder failed: ${getResponse.status} - ${errorMessage}`)
+      throw new Error(`PayPal 查询订单失败: ${errorMessage}`)
+    }
+
+    const data = (await getResponse.json()) as PayPalOrderResponse
     return data
   }
 
@@ -255,21 +319,31 @@ export class PayPalService {
       }
     }
 
-    const response = await fetch(`${getBaseUrl()}/v2/payments/captures/${captureId}/refund`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(body),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`PayPal refund failed: ${response.status} ${errorText}`)
+    let refundResponse: Response
+    try {
+      refundResponse = await fetchWithTimeout(`${getBaseUrl()}/v2/payments/captures/${captureId}/refund`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(body),
+      })
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        throw new Error('PayPal 退款请求超时，请稍后重试')
+      }
+      throw new Error('无法连接到 PayPal 服务，请检查网络连接')
     }
 
-    const data = (await response.json()) as PayPalRefundResponse
+    if (!refundResponse.ok) {
+      const errorData = await refundResponse.json().catch(() => ({ details: [] }))
+      const errorMessage = errorData.details?.[0]?.description || errorData.message || 'Unknown error'
+      console.error(`[PayPal] refund failed: ${refundResponse.status} - ${errorMessage}`)
+      throw new Error(`PayPal 退款失败: ${errorMessage}`)
+    }
+
+    const data = (await refundResponse.json()) as PayPalRefundResponse
     return data
   }
 

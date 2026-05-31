@@ -23,9 +23,7 @@ export interface Category {
   id: string
   nameEn: string
   nameZh: string
-  slug: string
   parentId?: string
-  imageUrl?: string
   sortOrder: number
   isActive: boolean
   createdAt: string
@@ -34,7 +32,12 @@ export interface Category {
 
 export const categoryService = {
   getAll: async (): Promise<{ success: boolean; data: Category[] }> => {
-    const result = await adminRequest<{ success: boolean; data: { categories: Category[]; pagination: any } }>('/categories')
-    return { success: result.success, data: result.data?.categories || [] }
+    try {
+      const result = await adminRequest<{ success: boolean; data: { categories: Category[]; pagination: any } }>('/categories')
+      return { success: result.success, data: result.data?.categories || [] }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error)
+      return { success: false, data: [] }
+    }
   },
 }

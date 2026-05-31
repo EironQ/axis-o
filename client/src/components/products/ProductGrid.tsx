@@ -1,4 +1,5 @@
 import { Product } from '@/types'
+import { useTranslation } from '@/i18n'
 import ProductCard from './ProductCard'
 
 interface ProductImage {
@@ -33,17 +34,19 @@ interface ProductGridProps {
 }
 
 export default function ProductGrid({ products }: ProductGridProps) {
+  const { t } = useTranslation()
+
   if (products.length === 0) {
     return (
       <div className="text-center py-20">
-        <p className="text-[#3C2415]/50 text-lg">暂无找到匹配的产品</p>
-        <p className="text-[#3C2415]/30 text-sm mt-2">请尝试调整筛选条件</p>
+        <p className="text-[#3C2415]/50 text-lg">{t('product.noProducts')}</p>
+        <p className="text-[#3C2415]/30 text-sm mt-2">{t('product.adjustFilter')}</p>
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-5 md:gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-5 md:gap-6">
       {products.map((product, i) => (
         <div
           key={product.id}

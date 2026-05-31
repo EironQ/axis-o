@@ -28,14 +28,10 @@ export interface AdminProduct extends Product {
   updatedAt: string
   categoryId: string
   careInstructions: string
+  notes: string
 }
 
 function apiProductToAdminProduct(apiProduct: any): AdminProduct {
-  const totalStock = apiProduct.variants?.reduce(
-    (sum: number, v: any) => sum + (v.stockQuantity || 0),
-    0
-  ) ?? 0
-
   return {
     id: apiProduct.id,
     name: apiProduct.nameZh || apiProduct.nameEn,
@@ -60,7 +56,7 @@ function apiProductToAdminProduct(apiProduct: any): AdminProduct {
     storyEn: apiProduct.storyEn || '',
     storyZh: apiProduct.storyZh || '',
     isBestSeller: Boolean(apiProduct.isBestseller),
-    category: apiProduct.category?.nameEn || '',
+    category: apiProduct.category?.nameZh || '',
     categoryId: apiProduct.category?.id || '',
     slug: apiProduct.slug,
     isActive: Boolean(apiProduct.isActive),
@@ -71,9 +67,10 @@ function apiProductToAdminProduct(apiProduct: any): AdminProduct {
     metaDescriptionZh: apiProduct.metaDescriptionZh || null,
     careInstructions: apiProduct.careInstructions || '',
     detailImages: apiProduct.detailImages || [],
+    notes: apiProduct.notes || '',
     createdAt: apiProduct.createdAt,
     updatedAt: apiProduct.updatedAt,
-    stock: totalStock,
+    stock: apiProduct.stock ?? 0,
     sales: apiProduct.sales || 0,
   }
 }
@@ -81,7 +78,7 @@ function apiProductToAdminProduct(apiProduct: any): AdminProduct {
 export const adminProductService = {
   getAll: async (): Promise<{ success: boolean; data: { products: AdminProduct[]; pagination: any } }> => {
     const result = await adminRequest<{ success: boolean; data: { products: any[]; pagination: any } }>(
-      '/admin/products?limit=100'
+      '/admin/products?limit=100&isActive=true'
     )
 
     return {
@@ -121,6 +118,8 @@ export const adminProductService = {
       metaTitleZh: product.metaTitleZh || '',
       metaDescriptionEn: product.metaDescriptionEn || '',
       metaDescriptionZh: product.metaDescriptionZh || '',
+      notes: product.notes || '',
+      stock: product.stock ?? 0,
     }
 
     if (product.images && product.images.length > 0) {
@@ -146,7 +145,7 @@ export const adminProductService = {
             size: size,
             sku: `${body.slug}-${(color.name || color).toLowerCase().replace(/\s+/g, '-')}-${size.toLowerCase()}`,
             priceAdjustment: 0,
-            stockQuantity: product.stock || 0,
+              stockQuantity: product.stock || 0,
           })
         }
       }
@@ -173,12 +172,20 @@ export const adminProductService = {
     }
     if (updates.nameEn !== undefined) body.nameEn = updates.nameEn
     if (updates.nameZh !== undefined) body.nameZh = updates.nameZh
-    if (updates.description !== undefined) body.descriptionEn = updates.description
-    if (updates.descriptionEn !== undefined) body.descriptionEn = updates.descriptionEn
-    if (updates.descriptionZh !== undefined) body.descriptionZh = updates.descriptionZh
-    if (updates.story !== undefined) body.storyEn = updates.story
-    if (updates.storyEn !== undefined) body.storyEn = updates.storyEn
-    if (updates.storyZh !== undefined) body.storyZh = updates.storyZh
+    if (updates.description !== undefined) {
+      body.descriptionEn = updates.description
+      body.descriptionZh = updates.description
+    } else {
+      if (updates.descriptionEn !== undefined) body.descriptionEn = updates.descriptionEn
+      if (updates.descriptionZh !== undefined) body.descriptionZh = updates.descriptionZh
+    }
+    if (updates.story !== undefined) {
+      body.storyEn = updates.story
+      body.storyZh = updates.story
+    } else {
+      if (updates.storyEn !== undefined) body.storyEn = updates.storyEn
+      if (updates.storyZh !== undefined) body.storyZh = updates.storyZh
+    }
     if (updates.categoryId !== undefined) body.categoryId = updates.categoryId
     if (updates.series !== undefined) body.series = updates.series
     if (updates.material !== undefined) body.material = updates.material
@@ -194,6 +201,8 @@ export const adminProductService = {
     if (updates.metaTitleZh !== undefined) body.metaTitleZh = updates.metaTitleZh
     if (updates.metaDescriptionEn !== undefined) body.metaDescriptionEn = updates.metaDescriptionEn
     if (updates.metaDescriptionZh !== undefined) body.metaDescriptionZh = updates.metaDescriptionZh
+    if (updates.notes !== undefined) body.notes = updates.notes
+    if (updates.stock !== undefined) body.stock = updates.stock
 
     if (updates.images !== undefined) {
       body.images = updates.images.map((url: string, index: number) => ({
@@ -221,7 +230,6 @@ export const adminProductService = {
               size: size,
               sku: `${body.slug || updates.slug || ''}-${(color.name || color).toLowerCase().replace(/\s+/g, '-')}-${size.toLowerCase()}`,
               priceAdjustment: 0,
-              stockQuantity: updates.stock || 0,
             })
           }
         }

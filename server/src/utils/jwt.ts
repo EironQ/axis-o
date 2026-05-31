@@ -9,11 +9,13 @@ interface TokenPayload {
 }
 
 export function signAccessToken(payload: TokenPayload, expiresIn?: string): string {
-  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: expiresIn || env.JWT_EXPIRES_IN } as jwt.SignOptions)
+  const { exp, ...cleanPayload } = payload as TokenPayload & { exp?: number }
+  return jwt.sign(cleanPayload, env.JWT_SECRET, { expiresIn: expiresIn || env.JWT_EXPIRES_IN } as jwt.SignOptions)
 }
 
 export function signRefreshToken(payload: TokenPayload): string {
-  return jwt.sign(payload, env.JWT_REFRESH_SECRET, { expiresIn: env.JWT_REFRESH_EXPIRES_IN } as jwt.SignOptions)
+  const { exp, ...cleanPayload } = payload as TokenPayload & { exp?: number }
+  return jwt.sign(cleanPayload, env.JWT_REFRESH_SECRET, { expiresIn: env.JWT_REFRESH_EXPIRES_IN } as jwt.SignOptions)
 }
 
 export function verifyRefreshToken(token: string): TokenPayload {

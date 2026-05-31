@@ -16,6 +16,7 @@ type RouterType = ReturnType<typeof Router>
 const router: RouterType = Router()
 
 router.post('/login', authLimiter, validate(loginSchema), AdminController.login)
+router.post('/refresh-token', AdminController.refreshToken)
 
 router.use(adminAuthenticate)
 
@@ -36,6 +37,7 @@ router.delete('/products/:id', ProductController.delete)
 router.get('/orders', OrderController.adminList)
 router.get('/orders/:id', OrderController.adminGetById)
 router.patch('/orders/:id/status', OrderController.adminUpdateStatus)
+router.post('/orders/:id/refund', OrderController.adminRefund)
 
 router.get('/payments/events', PaymentController.listPaymentEvents)
 

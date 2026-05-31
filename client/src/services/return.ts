@@ -1,6 +1,8 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
 
+import { getAuthToken, handleAuthError, createAuthHeaders } from './authHelper'
+
 export interface ReturnItem {
   id: string
   returnId: string
@@ -72,20 +74,27 @@ export interface ApiResponse<T> {
   }
 }
 
-function getAuthHeaders() {
-  const token = localStorage.getItem('accessToken')
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  }
-}
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const res = await fetch(url, {
+    ...options,
+    headers: createAuthHeaders(),
+  })
 
-function handleAuthError(res: Response) {
   if (res.status === 401) {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    window.location.href = '/login'
+    const { refreshAccessToken } = await import('./authHelper')
+    const newToken = await refreshAccessToken()
+    if (newToken) {
+      return fetch(url, {
+        ...options,
+        headers: createAuthHeaders(),
+      })
+    } else {
+      handleAuthError()
+      throw new Error('Unauthorized')
+    }
   }
+
+  return res
 }
 
 export const returnService = {
@@ -118,12 +127,10 @@ export const returnService = {
         },
       }
     }
-    const res = await fetch(`${API_BASE_URL}/returns`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/returns`, {
       method: 'POST',
-      headers: getAuthHeaders(),
       body: JSON.stringify(input),
     })
-    handleAuthError(res)
     return res.json()
   },
 
@@ -134,11 +141,7 @@ export const returnService = {
         data: [],
       }
     }
-    const res = await fetch(`${API_BASE_URL}/returns`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    })
-    handleAuthError(res)
+    const res = await fetchWithAuth(`${API_BASE_URL}/returns`)
     return res.json()
   },
 
@@ -159,11 +162,7 @@ export const returnService = {
         },
       }
     }
-    const res = await fetch(`${API_BASE_URL}/returns/${returnId}`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    })
-    handleAuthError(res)
+    const res = await fetchWithAuth(`${API_BASE_URL}/returns/${returnId}`)
     return res.json()
   },
 
@@ -183,11 +182,20 @@ export const returnService = {
         },
       }
     }
-    const res = await fetch(`${API_BASE_URL}/returns/${returnId}/cancel`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/returns/${returnId}/cancel`, {
       method: 'PATCH',
-      headers: getAuthHeaders(),
     })
-    handleAuthError(res)
+    return res.json()
+  },
+
+  getByOrderId: async (orderId: string): Promise<ApiResponse<ReturnRequest>> => {
+    if (USE_MOCK) {
+      return {
+        success: true,
+        data: undefined,
+      }
+    }
+    const res = await fetchWithAuth(`${API_BASE_URL}/returns/order/${orderId}`)
     return res.json()
   },
 }

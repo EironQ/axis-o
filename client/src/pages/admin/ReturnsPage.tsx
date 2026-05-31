@@ -52,6 +52,9 @@ export interface ReturnRequest {
   logs?: ReturnLog[]
   orderNumber?: string
   userName?: string
+  orderTotal?: number
+  orderCurrency?: string
+  paymentProvider?: string
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -76,6 +79,12 @@ const reasonConfig: Record<string, string> = {
   changed_mind: '个人原因',
   arrived_late: '送达超时',
   other: '其他原因',
+}
+
+const paymentProviderLabels: Record<string, string> = {
+  stripe: 'Stripe (信用卡)',
+  paypal: 'PayPal',
+  airwallex: 'Airwallex',
 }
 
 function getAuthHeaders() {
@@ -196,9 +205,11 @@ export default function AdminReturnsPage() {
         setSelectedReturn(json.data)
       } else {
         setSelectedReturn(returnItem)
+        showToast('error', json.error?.message || '加载详情失败')
       }
     } catch {
       setSelectedReturn(returnItem)
+      showToast('error', '网络错误，请稍后重试')
     }
     setDetailLoading(false)
   }
@@ -236,10 +247,12 @@ export default function AdminReturnsPage() {
           return
         }
         try {
+          const body: Record<string, unknown> = { refundAmount: amount }
+          if (adminNote) body.adminNote = adminNote
           const res = await fetch(`${API_BASE_URL}/admin/returns/${selectedReturn.id}/refund`, {
             method: 'PATCH',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ refundAmount: amount }),
+            body: JSON.stringify(body),
           })
           if (res.status === 401) {
             localStorage.removeItem('adminToken')
@@ -362,6 +375,7 @@ export default function AdminReturnsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">类型</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">原因</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">已退款金额</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">申请时间</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
                 </tr>
@@ -369,7 +383,7 @@ export default function AdminReturnsPage() {
               <tbody className="divide-y divide-gray-100">
                 {returns.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-gray-400">暂无退换货申请</td>
+                    <td colSpan={8} className="px-4 py-12 text-center text-gray-400">暂无退换货申请</td>
                   </tr>
                 ) : (
                   returns.map((returnItem) => (
@@ -394,6 +408,13 @@ export default function AdminReturnsPage() {
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusConfig[returnItem.status]?.className}`}>
                           {statusConfig[returnItem.status]?.label}
                         </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {returnItem.refundAmount !== undefined && returnItem.refundAmount !== null && returnItem.refundAmount > 0 ? (
+                          <span className="text-sm font-medium text-red-600">${Number(returnItem.refundAmount).toLocaleString()}</span>
+                        ) : (
+                          <span className="text-sm text-gray-300">-</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">{formatDate(returnItem.createdAt)}</td>
                       <td className="px-4 py-3">
@@ -479,10 +500,26 @@ export default function AdminReturnsPage() {
                     <p className="text-xs text-gray-500 mb-1">更新时间</p>
                     <p className="text-sm text-gray-900">{formatDate(selectedReturn.updatedAt)}</p>
                   </div>
+                  {selectedReturn.orderTotal !== undefined && selectedReturn.orderTotal !== null && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">订单金额</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        ${Number(selectedReturn.orderTotal).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                  {selectedReturn.paymentProvider && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">支付方式</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {paymentProviderLabels[selectedReturn.paymentProvider] || selectedReturn.paymentProvider}
+                      </p>
+                    </div>
+                  )}
                   {selectedReturn.refundAmount !== undefined && selectedReturn.refundAmount !== null && (
                     <div>
                       <p className="text-xs text-gray-500 mb-1">退款金额</p>
-                      <p className="text-sm font-medium text-gray-900">${Number(selectedReturn.refundAmount).toLocaleString()}</p>
+                      <p className="text-sm font-medium text-red-600">${Number(selectedReturn.refundAmount).toLocaleString()}</p>
                     </div>
                   )}
                 </div>
@@ -494,7 +531,7 @@ export default function AdminReturnsPage() {
                   </div>
                 )}
 
-                {selectedReturn.items && selectedReturn.items.length > 0 && (
+                {selectedReturn.items && selectedReturn.items.length > 0 ? (
                   <div>
                     <h4 className="text-sm font-semibold text-gray-800 mb-3">申请商品 ({selectedReturn.items.length} 件)</h4>
                     <div className="border border-gray-100 rounded-lg overflow-hidden">
@@ -528,6 +565,11 @@ export default function AdminReturnsPage() {
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                ) : (
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-800 mb-3">申请商品</h4>
+                    <p className="text-sm text-gray-400 bg-gray-50 rounded-lg p-6 text-center">暂无商品信息</p>
                   </div>
                 )}
 

@@ -3,27 +3,37 @@ import { Link } from 'react-router-dom'
 import { Mail, Instagram } from 'lucide-react'
 import { useCookieConsent } from '@/components/ui/CookieConsent'
 import { useSettings } from '@/context/SettingsContext'
+import { useTranslation, useLanguage } from '@/i18n'
 
-const footerLinks = {
-  '探索': [
-    { label: '经典系列', href: '/products?series=classic' },
-    { label: '轻奢系列', href: '/products?series=luxe' },
-    { label: '旅行系列', href: '/products?series=travel' },
-    { label: '全部产品', href: '/products' },
-  ],
-  '关于': [
-    { label: '品牌故事', href: '/about' },
-    { label: '工艺与材质', href: '/about' },
-    { label: '可持续发展', href: '/about' },
-    { label: '常见问题', href: '#' },
-  ],
-  '服务': [
-    { label: '联系我们', href: '#' },
-    { label: '配送信息', href: '/shipping' },
-    { label: '退换政策', href: '/return-policy' },
-    { label: '产品保修', href: '#' },
-  ],
-}
+const footerLinkGroups = [
+  {
+    key: 'footer.explore',
+    links: [
+      { key: 'footer.classic', href: '/products?series=classic' },
+      { key: 'footer.luxe', href: '/products?series=luxe' },
+      { key: 'footer.travel', href: '/products?series=travel' },
+      { key: 'footer.allProducts', href: '/products' },
+    ],
+  },
+  {
+    key: 'footer.about',
+    links: [
+      { key: 'footer.brandStory', href: '/about' },
+      { key: 'footer.craftsmanship', href: '/craftsmanship' },
+      { key: 'footer.sustainability', href: '/sustainability' },
+      { key: 'footer.faq', href: '#' },
+    ],
+  },
+  {
+    key: 'footer.service',
+    links: [
+      { key: 'footer.contactUs', href: '#' },
+      { key: 'footer.shipping', href: '/shipping' },
+      { key: 'footer.returns', href: '/return-policy' },
+      { key: 'footer.warranty', href: '#' },
+    ],
+  },
+]
 
 const socialIcons: Record<string, { icon: ReactNode; label: string }> = {
   instagram_url: { icon: <Instagram size={18} />, label: 'Instagram' },
@@ -72,6 +82,8 @@ const socialIcons: Record<string, { icon: ReactNode; label: string }> = {
 export default function Footer() {
   const { showSettings } = useCookieConsent()
   const { store, social } = useSettings()
+  const { t } = useTranslation()
+  const { lang } = useLanguage()
   const storeName = store.store_name
   const socialLinks = social as Record<string, string>
 
@@ -84,14 +96,13 @@ export default function Footer() {
       <div className="mx-auto max-w-[1440px] px-8 pt-20 pb-12">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-16">
           <div className="col-span-2">
-            <Link to="/" className="inline-block mb-5">
+            <Link to={`/${lang}`} className="inline-block mb-5">
               <span className="font-['Playfair_Display'] text-2xl tracking-[0.3em] text-[#FAF7F2]">
                 {storeName}
               </span>
             </Link>
             <p className="text-sm leading-relaxed max-w-xs mt-4">
-              以极简美学重新定义时尚包包。<br />
-              我们相信，真正的优雅源于对细节的不懈追求。
+              {t('footer.brandDesc')}
             </p>
             <div className="flex gap-4 mt-6">
               {enabledSocials.length > 0 ? (
@@ -120,19 +131,19 @@ export default function Footer() {
             </div>
           </div>
 
-          {Object.entries(footerLinks).map(([title, links]) => (
-            <div key={title}>
+          {footerLinkGroups.map((group) => (
+            <div key={group.key}>
               <h4 className="text-sm tracking-[0.2em] uppercase text-[#FAF7F2] mb-5">
-                {title}
+                {t(group.key as any)}
               </h4>
               <ul className="space-y-3">
-                {links.map((link) => (
-                  <li key={link.label}>
+                {group.links.map((link) => (
+                  <li key={link.key}>
                     <Link
-                      to={link.href}
+                      to={`/${lang}${link.href}`}
                       className="text-sm hover:text-[#C89460] transition-colors duration-300"
                     >
-                      {link.label}
+                      {t(link.key as any)}
                     </Link>
                   </li>
                 ))}
@@ -142,11 +153,11 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-[#FAF7F2]/10 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-xs">&copy; 2026 {storeName}. All rights reserved.</p>
+          <p className="text-xs">{t('footer.copyright').replace('{name}', storeName)}</p>
           <div className="flex gap-6 text-xs">
-            <Link to="/privacy" className="hover:text-[#C89460] transition-colors">隐私政策</Link>
-            <Link to="/terms" className="hover:text-[#C89460] transition-colors">服务条款</Link>
-            <button onClick={showSettings} className="hover:text-[#C89460] transition-colors">Cookie 设置</button>
+            <Link to={`/${lang}/privacy`} className="hover:text-[#C89460] transition-colors">{t('footer.privacy')}</Link>
+            <Link to={`/${lang}/terms`} className="hover:text-[#C89460] transition-colors">{t('footer.terms')}</Link>
+            <button onClick={showSettings} className="hover:text-[#C89460] transition-colors">{t('footer.cookieSettings')}</button>
           </div>
         </div>
       </div>

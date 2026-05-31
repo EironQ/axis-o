@@ -3,6 +3,7 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
 
 import type { MockOrder } from '@/data/mockData'
 import { mockOrders } from '@/data/mockData'
+import { handleAuthError, createAuthHeaders } from './authHelper'
 
 export interface OrderAddress {
   firstName: string
@@ -35,6 +36,7 @@ export interface Order {
   cancelledAt?: string
   createdAt: string
   updatedAt: string
+  hasReturnRequest?: boolean
   items?: OrderItem[]
   shippingAddress?: OrderAddress | null
   billingAddress?: OrderAddress | null
@@ -71,20 +73,27 @@ export interface ApiResponse<T> {
   }
 }
 
-function getAuthHeaders() {
-  const token = localStorage.getItem('accessToken')
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  }
-}
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const res = await fetch(url, {
+    ...options,
+    headers: createAuthHeaders(),
+  })
 
-function handleAuthError(res: Response) {
   if (res.status === 401) {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    window.location.href = '/login'
+    const { refreshAccessToken } = await import('./authHelper')
+    const newToken = await refreshAccessToken()
+    if (newToken) {
+      return fetch(url, {
+        ...options,
+        headers: createAuthHeaders(),
+      })
+    } else {
+      handleAuthError()
+      throw new Error('Unauthorized')
+    }
   }
+
+  return res
 }
 
 function mapMockOrder(mockOrder: MockOrder): Order {
@@ -148,11 +157,7 @@ export const orderService = {
       const orders = filterMockOrders().map(mapMockOrder)
       return { success: true, data: orders }
     }
-    const res = await fetch(`${API_BASE_URL}/orders`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    })
-    handleAuthError(res)
+    const res = await fetchWithAuth(`${API_BASE_URL}/orders`)
     const json = await res.json()
     if (json.success && json.data) {
       const ordersData = json.data.orders || json.data
@@ -177,11 +182,7 @@ export const orderService = {
       }
       return { success: true, data: mapMockOrder(order) }
     }
-    const res = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    })
-    handleAuthError(res)
+    const res = await fetchWithAuth(`${API_BASE_URL}/orders/${orderId}`)
     const json = await res.json()
     if (json.success && json.data) {
       const orderData = json.data.order || json.data
@@ -232,11 +233,7 @@ export const orderService = {
       }))
       return { success: true, data: items }
     }
-    const res = await fetch(`${API_BASE_URL}/orders/${orderId}/items`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    })
-    handleAuthError(res)
+    const res = await fetchWithAuth(`${API_BASE_URL}/orders/${orderId}/items`)
     return res.json()
   },
 
@@ -253,11 +250,9 @@ export const orderService = {
       order.updatedAt = new Date().toISOString()
       return { success: true, data: { message: 'Order cancelled' } }
     }
-    const res = await fetch(`${API_BASE_URL}/orders/${orderId}/cancel`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/orders/${orderId}/cancel`, {
       method: 'PUT',
-      headers: getAuthHeaders(),
     })
-    handleAuthError(res)
     return res.json()
   },
 }

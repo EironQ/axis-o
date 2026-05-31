@@ -3,25 +3,28 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Package, Upload, Plus, X, CheckCircle, AlertCircle } from 'lucide-react'
 import { orderService, Order } from '@/services/order'
 import { returnService, CreateReturnInput } from '@/services/return'
-
-const typeOptions = [
-  { value: 'return', label: '退货', description: '将商品退回，获得退款' },
-  { value: 'exchange', label: '换货', description: '更换商品规格或型号' },
-  { value: 'refund', label: '退款', description: '仅申请退款，不退货' },
-]
-
-const reasonOptions = [
-  { value: 'defective', label: '商品质量问题', description: '商品存在质量缺陷或损坏' },
-  { value: 'wrong_item', label: '发错商品', description: '收到的商品与订单不符' },
-  { value: 'not_as_described', label: '与描述不符', description: '商品实际与页面描述不一致' },
-  { value: 'changed_mind', label: '个人原因', description: '个人改变主意，不想要了' },
-  { value: 'arrived_late', label: '送达超时', description: '商品送达时间超过预期' },
-  { value: 'other', label: '其他原因', description: '其他需要退换货的原因' },
-]
+import { useLanguage, useTranslation } from '@/i18n'
 
 export default function ReturnCreatePage() {
   const { orderId: initialOrderId } = useParams<{ orderId?: string }>()
   const navigate = useNavigate()
+  const { lang } = useLanguage()
+  const { t } = useTranslation()
+  
+  const typeOptions = [
+    { value: 'return', label: t('return.type.return'), description: t('return.create.typeReturnDesc') },
+    { value: 'exchange', label: t('return.type.exchange'), description: t('return.create.typeExchangeDesc') },
+    { value: 'refund', label: t('return.type.refund'), description: t('return.create.typeRefundDesc') },
+  ]
+
+  const reasonOptions = [
+    { value: 'defective', label: t('return.reason.defective'), description: t('return.reason.defective') },
+    { value: 'wrong_item', label: t('return.reason.wrong_item'), description: t('return.reason.wrong_item') },
+    { value: 'not_as_described', label: t('return.reason.not_as_described'), description: t('return.reason.not_as_described') },
+    { value: 'changed_mind', label: t('return.reason.changed_mind'), description: t('return.reason.changed_mind') },
+    { value: 'arrived_late', label: t('return.reason.arrived_late'), description: t('return.reason.arrived_late') },
+    { value: 'other', label: t('return.reason.other'), description: t('return.reason.other') },
+  ]
   const [orders, setOrders] = useState<Order[]>([])
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [selectedItems, setSelectedItems] = useState<Array<{ orderItemId: string; quantity: number; newVariantId?: string }>>([])
@@ -39,7 +42,7 @@ export default function ReturnCreatePage() {
   useEffect(() => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
-      navigate('/login')
+      navigate(`/${lang}/login`)
       return
     }
     loadOrders()
@@ -68,7 +71,7 @@ export default function ReturnCreatePage() {
         }
       }
     } catch {
-      setError('加载订单详情失败')
+      setError(t('return.error.loadDetailFailed'))
     } finally {
       setIsLoadingOrder(false)
     }
@@ -84,7 +87,7 @@ export default function ReturnCreatePage() {
         setOrders(eligibleOrders)
       }
     } catch {
-      setError('加载订单列表失败')
+      setError(t('return.error.loadFailed'))
     }
   }
 
@@ -130,7 +133,7 @@ export default function ReturnCreatePage() {
 
   const handleSubmit = async () => {
     if (!selectedOrder || selectedItems.length === 0 || !formData.reason) {
-      setError('请填写完整信息')
+      setError(t('return.create.orderRequired'))
       return
     }
 
@@ -151,10 +154,10 @@ export default function ReturnCreatePage() {
       if (response.success) {
         setSuccess(true)
       } else {
-        setError(response.error?.message || '提交失败')
+        setError(response.error?.message || t('return.create.failed'))
       }
     } catch {
-      setError('网络错误，请稍后重试')
+      setError(lang === 'zh' ? '网络错误，请稍后重试' : 'Network error, please try again later')
     } finally {
       setIsSubmitting(false)
     }
@@ -167,22 +170,22 @@ export default function ReturnCreatePage() {
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-10 h-10 text-green-600" />
           </div>
-          <h2 className="text-xl font-bold text-[#3C2415] mb-2">申请提交成功</h2>
+          <h2 className="text-xl font-bold text-[#3C2415] mb-2">{t('return.create.success')}</h2>
           <p className="text-gray-600 mb-6">
-            您的退换货申请已提交，我们会尽快处理并通过邮件通知您审核结果。
+            {lang === 'zh' ? '您的退换货申请已提交，我们会尽快处理并通过邮件通知您审核结果。' : 'Your return request has been submitted. We will process it and notify you by email.'}
           </p>
           <div className="flex gap-4">
             <button
-              onClick={() => navigate('/returns')}
+              onClick={() => navigate(`/${lang}/returns`)}
               className="flex-1 px-6 py-3 bg-[#8B7355] text-white rounded-lg hover:bg-[#6B5344] transition-colors"
             >
-              查看申请记录
+              {lang === 'zh' ? '查看申请记录' : 'View Request History'}
             </button>
             <button
-              onClick={() => navigate('/orders')}
+              onClick={() => navigate(`/${lang}/orders`)}
               className="flex-1 px-6 py-3 border border-[#8B7355] text-[#8B7355] rounded-lg hover:bg-[#8B7355] hover:text-white transition-colors"
             >
-              返回订单列表
+              {lang === 'zh' ? '返回订单列表' : 'Back to Orders'}
             </button>
           </div>
         </div>
@@ -195,17 +198,17 @@ export default function ReturnCreatePage() {
       <div className="max-w-2xl mx-auto px-4">
         <div className="flex items-center gap-4 mb-6">
           <button
-            onClick={() => navigate('/returns')}
+            onClick={() => navigate(`/${lang}/returns`)}
             className="flex items-center gap-2 text-gray-600 hover:text-[#8B7355] transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            返回
+            {t('common.back')}
           </button>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-6">
-          <h1 className="text-xl font-bold text-[#3C2415] mb-2">申请退换货</h1>
-          <p className="text-gray-500 mb-6">请填写以下信息提交退换货申请</p>
+          <h1 className="text-xl font-bold text-[#3C2415] mb-2">{t('return.create.title')}</h1>
+          <p className="text-gray-500 mb-6">{lang === 'zh' ? '请填写以下信息提交退换货申请' : 'Please fill in the following information to submit your return request'}</p>
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
@@ -215,10 +218,10 @@ export default function ReturnCreatePage() {
           )}
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-[#3C2415] mb-3">选择订单</label>
+            <label className="block text-sm font-medium text-[#3C2415] mb-3">{t('return.create.selectOrder')}</label>
             {orders.length === 0 ? (
               <div className="bg-gray-50 rounded-lg p-4 text-center text-gray-500">
-                暂无可申请退换货的订单
+                {lang === 'zh' ? '暂无可申请退换货的订单' : 'No orders eligible for return'}
               </div>
             ) : (
               <div className="grid gap-3">
@@ -236,7 +239,7 @@ export default function ReturnCreatePage() {
                       <div>
                         <p className="font-medium text-[#3C2415]">{order.orderNumber}</p>
                         <p className="text-sm text-gray-500">
-                          订单金额: ¥{order.total}
+                          订单金额: ${order.total}
                         </p>
                       </div>
                       {selectedOrder?.id === order.id && (
@@ -252,7 +255,7 @@ export default function ReturnCreatePage() {
           {selectedOrder && selectedOrder.items && (
             <div className="mb-6">
               <label className="block text-sm font-medium text-[#3C2415] mb-3">
-                选择商品 ({selectedItems.filter((item) => item.quantity > 0).length}/{selectedOrder.items.length})
+                {lang === 'zh' ? '选择商品' : 'Select Items'} ({selectedItems.filter((item) => item.quantity > 0).length}/{selectedOrder.items.length})
               </label>
               {isLoadingOrder ? (
                 <div className="flex justify-center py-8">
@@ -277,7 +280,7 @@ export default function ReturnCreatePage() {
                           {item.variantDescription && (
                             <p className="text-sm text-gray-500">{item.variantDescription}</p>
                           )}
-                          <p className="text-sm text-gray-600">单价: ¥{item.unitPrice}</p>
+                          <p className="text-sm text-gray-600">{lang === 'zh' ? '单价' : 'Unit Price'}: ${item.unitPrice}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
@@ -304,7 +307,7 @@ export default function ReturnCreatePage() {
           )}
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-[#3C2415] mb-3">申请类型</label>
+            <label className="block text-sm font-medium text-[#3C2415] mb-3">{t('return.create.selectType')}</label>
             <div className="grid grid-cols-3 gap-3">
               {typeOptions.map((option) => (
                 <div
@@ -324,7 +327,7 @@ export default function ReturnCreatePage() {
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-[#3C2415] mb-3">申请原因</label>
+            <label className="block text-sm font-medium text-[#3C2415] mb-3">{t('return.create.selectReason')}</label>
             <div className="grid grid-cols-2 gap-3">
               {reasonOptions.map((option) => (
                 <div
@@ -344,24 +347,24 @@ export default function ReturnCreatePage() {
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-[#3C2415] mb-3">详细说明（选填）</label>
+            <label className="block text-sm font-medium text-[#3C2415] mb-3">{t('return.create.addDetails')}</label>
             <textarea
               value={formData.reasonDetail}
               onChange={(e) => setFormData({ ...formData, reasonDetail: e.target.value })}
               rows={4}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8B7355] focus:border-transparent resize-none"
-              placeholder="请描述具体情况，以便我们更好地处理您的申请..."
+              placeholder={lang === 'zh' ? '请描述具体情况，以便我们更好地处理您的申请...' : 'Please describe the details so we can better process your request...'}
             />
           </div>
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-[#3C2415] mb-3">
-              凭证图片（选填，最多5张）
+              {t('return.create.uploadImages')}
             </label>
             <div className="grid grid-cols-5 gap-3">
               {images.map((image, index) => (
                 <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative group">
-                  <img src={image} alt={`凭证 ${index + 1}`} className="w-full h-full object-cover" />
+                  <img src={image} alt={`${lang === 'zh' ? '凭证' : 'Evidence'} ${index + 1}`} className="w-full h-full object-cover" />
                   <button
                     onClick={() => removeImage(index)}
                     className="absolute top-1 right-1 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -376,7 +379,7 @@ export default function ReturnCreatePage() {
                   className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center hover:border-[#8B7355] hover:bg-[#8B7355]/5 transition-colors"
                 >
                   <Upload className="w-6 h-6 text-gray-400" />
-                  <span className="text-xs text-gray-500 mt-1">上传</span>
+                  <span className="text-xs text-gray-500 mt-1">{lang === 'zh' ? '上传' : 'Upload'}</span>
                 </button>
               )}
             </div>
@@ -387,7 +390,7 @@ export default function ReturnCreatePage() {
             disabled={isSubmitting || !selectedOrder || selectedItems.filter((item) => item.quantity > 0).length === 0 || !formData.reason}
             className="w-full py-3 bg-[#8B7355] text-white rounded-lg hover:bg-[#6B5344] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? '提交中...' : '提交申请'}
+            {isSubmitting ? t('return.create.submitting') : t('return.create.submit')}
           </button>
         </div>
       </div>

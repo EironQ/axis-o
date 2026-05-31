@@ -13,6 +13,8 @@ export default function CartAnimation({ startX, startY, endX, endY, onComplete }
     transform: `translate(${startX}px, ${startY}px) scale(1)`,
     opacity: 1,
   })
+  const onCompleteRef = useRef(onComplete)
+  onCompleteRef.current = onComplete
 
   useEffect(() => {
     const duration = 600
@@ -52,12 +54,12 @@ export default function CartAnimation({ startX, startY, endX, endY, onComplete }
       if (progress < 1) {
         requestAnimationFrame(animate)
       } else {
-        onComplete()
+        onCompleteRef.current()
       }
     }
 
     requestAnimationFrame(animate)
-  }, [startX, startY, endX, endY, onComplete])
+  }, [startX, startY, endX, endY])
 
   return (
     <div

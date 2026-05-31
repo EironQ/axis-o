@@ -266,9 +266,7 @@ export const ProductController = {
           id: categories.id,
           nameEn: categories.nameEn,
           nameZh: categories.nameZh,
-          slug: categories.slug,
           parentId: categories.parentId,
-          imageUrl: categories.imageUrl,
           sortOrder: categories.sortOrder,
         })
         .from(categories)
@@ -308,7 +306,7 @@ export const ProductController = {
 
   adminList: async (req: Request, res: Response) => {
     try {
-      const { page = 1, limit = 20, search, series, isActive = 'all' } = req.query as any
+      const { page = 1, limit = 20, search, series, isActive = 'true' } = req.query as any
       const offset = (page - 1) * limit
 
       const conditions = []
@@ -329,6 +327,7 @@ export const ProductController = {
           isActive: products.isActive,
           sortOrder: products.sortOrder,
           categoryId: products.categoryId,
+          stock: products.stock,
           createdAt: products.createdAt,
           updatedAt: products.updatedAt,
           descriptionEn: products.descriptionEn,
@@ -341,6 +340,7 @@ export const ProductController = {
           metaTitleZh: products.metaTitleZh,
           metaDescriptionEn: products.metaDescriptionEn,
           metaDescriptionZh: products.metaDescriptionZh,
+          notes: products.notes,
         })
         .from(products)
         .where(conditions.length > 0 ? and(...conditions) : undefined)
@@ -596,14 +596,18 @@ export const ProductController = {
       }
 
       if (Object.keys(productData).length > 0) {
-        const updateData: any = { ...productData }
-        if (typeof updateData.isBestseller === 'boolean') {
-          updateData.isBestseller = updateData.isBestseller ? 1 : 0
+        const setData: Record<string, any> = {}
+        for (const [key, value] of Object.entries(productData)) {
+          if (value !== undefined && !['images', 'variants', 'detailImages'].includes(key)) {
+            setData[key] = value
+          }
         }
-        if (typeof updateData.isActive === 'boolean') {
-          updateData.isActive = updateData.isActive ? 1 : 0
+        if (typeof setData.isBestseller === 'boolean') setData.isBestseller = setData.isBestseller ? 1 : 0
+        if (typeof setData.isActive === 'boolean') setData.isActive = setData.isActive ? 1 : 0
+        if (Object.keys(setData).length > 0) {
+          setData.updatedAt = new Date()
+          await db.update(products).set(setData).where(eq(products.id, productId))
         }
-        await db.update(products).set(updateData).where(eq(products.id, productId))
       }
 
       if (imageData !== undefined) {
@@ -639,10 +643,34 @@ export const ProductController = {
       }
 
       if (variantData !== undefined) {
-        await db.delete(productVariants).where(eq(productVariants.productId, productId))
-        if (variantData.length > 0) {
-          await db.insert(productVariants).values(
-            variantData.map((v: any) => ({
+        const existingVariants = await db.select().from(productVariants).where(eq(productVariants.productId, productId))
+
+        const existingMap = new Map<string, typeof existingVariants[0]>()
+        for (const ev of existingVariants) {
+          existingMap.set(`${ev.colorName}::${ev.size}`, ev)
+        }
+
+        const incomingKeys = new Set<string>()
+
+        for (const v of variantData) {
+          const key = `${v.colorName}::${v.size}`
+          incomingKeys.add(key)
+          const existingVariant = existingMap.get(key)
+
+          if (existingVariant) {
+            await db.update(productVariants)
+              .set({
+                colorHex: v.colorHex || null,
+                sku: v.sku,
+                priceAdjustment: String(v.priceAdjustment || 0),
+                stockQuantity: v.stockQuantity ?? existingVariant.stockQuantity,
+                lowStockThreshold: v.lowStockThreshold ?? existingVariant.lowStockThreshold,
+                isActive: v.isActive !== false ? 1 : 0,
+                updatedAt: new Date(),
+              })
+              .where(eq(productVariants.id, existingVariant.id))
+          } else {
+            await db.insert(productVariants).values({
               id: uuidv4(),
               productId,
               colorName: v.colorName,
@@ -653,8 +681,14 @@ export const ProductController = {
               stockQuantity: v.stockQuantity || 0,
               lowStockThreshold: v.lowStockThreshold || 5,
               isActive: v.isActive !== false ? 1 : 0,
-            }))
-          )
+            })
+          }
+        }
+
+        for (const [key, ev] of existingMap) {
+          if (!incomingKeys.has(key)) {
+            await db.delete(productVariants).where(eq(productVariants.id, ev.id))
+          }
         }
       }
 

@@ -167,7 +167,7 @@ const statusColors: Record<string, string> = {
 const paymentLabels: Record<string, string> = {
   stripe: 'Stripe',
   paypal: 'PayPal',
-  alipay: '支付宝',
+  airwallex: 'Airwallex',
   card: '银行卡',
   credit_card: '信用卡',
   wechat: '微信支付',

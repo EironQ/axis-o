@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { addressService, Address, CreateAddressRequest } from '@/services/address'
 import { useSettings } from '@/context/SettingsContext'
+import { useLanguage } from '@/i18n'
 
 const countryNames: Record<string, string> = {
   CN: '中国', US: '美国', GB: '英国', DE: '德国', FR: '法国',
@@ -23,6 +24,7 @@ const countryNames: Record<string, string> = {
 
 export default function AddressPage() {
   const navigate = useNavigate()
+  const { lang } = useLanguage()
   const { store } = useSettings()
   const [addresses, setAddresses] = useState<Address[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -43,7 +45,7 @@ export default function AddressPage() {
   useEffect(() => {
     const token = localStorage.getItem('accessToken')
     if (!token) {
-      navigate('/login')
+      navigate(`/${lang}/login`)
       return
     }
     loadAddresses()

@@ -44,16 +44,12 @@ export const categories = mysqlTable('categories', {
   id: varchar('id', { length: 36 }).primaryKey(),
   nameEn: varchar('name_en', { length: 100 }).notNull(),
   nameZh: varchar('name_zh', { length: 100 }).notNull(),
-  slug: varchar('slug', { length: 100 }).notNull().unique(),
   parentId: varchar('parent_id', { length: 36 }),
-  imageUrl: varchar('image_url', { length: 500 }),
   sortOrder: int('sort_order').notNull().default(0),
   isActive: tinyint('is_active').notNull().default(1),
   createdAt: datetime('created_at').notNull().$defaultFn(() => new Date()),
   updatedAt: datetime('updated_at').notNull().$defaultFn(() => new Date()).$onUpdateFn(() => new Date()),
-}, (table) => [
-  index('idx_categories_slug').on(table.slug),
-])
+})
 
 export const products = mysqlTable('products', {
   id: varchar('id', { length: 36 }).primaryKey(),
@@ -69,6 +65,7 @@ export const products = mysqlTable('products', {
   material: varchar('material', { length: 200 }),
   careInstructions: text('care_instructions'),
   basePrice: decimal('base_price', { precision: 10, scale: 2 }).notNull(),
+  stock: int('stock').notNull().default(0),
   isBestseller: tinyint('is_bestseller').notNull().default(0),
   isActive: tinyint('is_active').notNull().default(1),
   sortOrder: int('sort_order').notNull().default(0),
@@ -76,6 +73,7 @@ export const products = mysqlTable('products', {
   metaTitleZh: varchar('meta_title_zh', { length: 255 }),
   metaDescriptionEn: text('meta_description_en'),
   metaDescriptionZh: text('meta_description_zh'),
+  notes: text('notes'),
   createdAt: datetime('created_at').notNull().$defaultFn(() => new Date()),
   updatedAt: datetime('updated_at').notNull().$defaultFn(() => new Date()).$onUpdateFn(() => new Date()),
 }, (table) => [
@@ -185,7 +183,7 @@ export const orderItems = mysqlTable('order_items', {
 export const payments = mysqlTable('payments', {
   id: varchar('id', { length: 36 }).primaryKey(),
   orderId: varchar('order_id', { length: 36 }).notNull().references(() => orders.id, { onDelete: 'cascade' }),
-  provider: mysqlEnum('provider', ['stripe', 'paypal', 'alipay']).notNull(),
+  provider: mysqlEnum('provider', ['stripe', 'paypal', 'airwallex']).notNull(),
   transactionId: varchar('transaction_id', { length: 255 }),
   status: mysqlEnum('status', ['pending', 'processing', 'succeeded', 'failed', 'refunded', 'partially_refunded']).notNull().default('pending'),
   amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
@@ -205,7 +203,7 @@ export const paymentEvents = mysqlTable('payment_events', {
   paymentId: varchar('payment_id', { length: 36 }).notNull().references(() => payments.id, { onDelete: 'cascade' }),
   orderId: varchar('order_id', { length: 36 }).notNull().references(() => orders.id, { onDelete: 'cascade' }),
   eventType: mysqlEnum('event_type', ['intent_created', 'intent_succeeded', 'intent_failed', 'intent_canceled', 'refund_requested', 'refund_succeeded', 'refund_failed', 'status_synced', 'webhook_received']).notNull(),
-  provider: mysqlEnum('provider', ['stripe', 'paypal', 'alipay']).notNull(),
+  provider: mysqlEnum('provider', ['stripe', 'paypal', 'airwallex']).notNull(),
   providerEventId: varchar('provider_event_id', { length: 255 }),
   amount: decimal('amount', { precision: 10, scale: 2 }),
   currency: varchar('currency', { length: 5 }),

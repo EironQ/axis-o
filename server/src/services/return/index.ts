@@ -1,8 +1,11 @@
 import { db } from '../../config/database'
 import { returns, returnItems, returnLogs } from '../../db/schema'
-import { users, orders, productImages, orderItems } from '../../db/schema'
+import { users, orders, productImages, orderItems, payments } from '../../db/schema'
 import { eq, and, desc, sql, or, like, inArray } from 'drizzle-orm'
 import { v4 as uuidv4 } from '../../utils/uuid'
+import { StripeService } from '../payment/stripe'
+import { PayPalService } from '../payment/paypal'
+import { AirwallexService } from '../payment/airwallex'
 
 export interface CreateReturnInput {
   orderId: string
@@ -47,15 +50,24 @@ export const ReturnService = {
       updatedAt: now,
     })
 
+    const orderItemIds = input.items.map((item) => item.orderItemId)
+    const orderItemsData = await db
+      .select()
+      .from(orderItems)
+      .where(and(inArray(orderItems.id, orderItemIds), eq(orderItems.orderId, input.orderId)))
+
+    const orderItemMap = new Map(orderItemsData.map((oi) => [oi.id, oi]))
+
     for (const item of input.items) {
+      const orderItem = orderItemMap.get(item.orderItemId)
       await db.insert(returnItems).values({
         id: uuidv4(),
         returnId,
         orderItemId: item.orderItemId,
-        productId: '',
-        variantId: item.newVariantId || '',
-        productName: '',
-        variantDescription: '',
+        productId: orderItem?.productId || '',
+        variantId: orderItem?.variantId || '',
+        productName: orderItem?.productName || '',
+        variantDescription: orderItem?.variantDescription || '',
         quantity: item.quantity,
         newVariantId: item.newVariantId,
         newProductName: item.newProductName,
@@ -101,11 +113,15 @@ export const ReturnService = {
         createdAt: returns.createdAt,
         updatedAt: returns.updatedAt,
         orderNumber: orders.orderNumber,
+        orderTotal: orders.total,
+        orderCurrency: orders.currency,
         userName: sql<string>`CONCAT(${users.lastName}, ${users.firstName})`,
+        paymentProvider: payments.provider,
       })
       .from(returns)
       .leftJoin(orders, eq(returns.orderId, orders.id))
       .leftJoin(users, eq(returns.userId, users.id))
+      .leftJoin(payments, eq(returns.orderId, payments.orderId))
       .where(and(...conditions))
       .limit(1)
 
@@ -166,7 +182,15 @@ export const ReturnService = {
       .where(eq(returnLogs.returnId, returnId))
       .orderBy(desc(returnLogs.createdAt))
 
-    const images = returnData.images ? JSON.parse(returnData.images as string) : []
+    let images: string[] = []
+    if (returnData.images) {
+      try {
+        images = JSON.parse(returnData.images as string)
+      } catch {
+        console.error('Failed to parse images JSON:', returnData.images)
+        images = []
+      }
+    }
 
     return {
       ...returnData,
@@ -196,8 +220,10 @@ export const ReturnService = {
         refundAmount: returns.refundAmount,
         createdAt: returns.createdAt,
         updatedAt: returns.updatedAt,
+        orderNumber: orders.orderNumber,
       })
       .from(returns)
+      .leftJoin(orders, eq(returns.orderId, orders.id))
       .where(and(...conditions))
       .orderBy(desc(returns.createdAt))
       .limit(limit)
@@ -407,11 +433,67 @@ export const ReturnService = {
     })
   },
 
-  async refund(returnId: string, refundAmount: number, operatorId: string) {
+  async refund(returnId: string, refundAmount: number, operatorId: string, adminNote?: string) {
     const returnData = await this.getById(returnId)
 
     if (!returnData) throw new Error('Return not found')
     if (returnData.status !== 'approved') throw new Error('Only approved returns can be refunded')
+
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(and(eq(payments.orderId, returnData.orderId), eq(payments.status, 'succeeded')))
+      .limit(1)
+
+    if (!payment) {
+      throw new Error('No successful payment found for this order')
+    }
+
+    if (adminNote) {
+      await db.insert(returnLogs).values({
+        id: uuidv4(),
+        returnId,
+        action: 'note_added',
+        toStatus: returnData.status,
+        operatorId,
+        operatorType: 'admin',
+        note: adminNote,
+        createdAt: new Date(),
+      })
+    }
+
+    try {
+      const currency = returnData.orderCurrency as string || 'USD'
+
+      if (payment.provider === 'stripe' && payment.transactionId) {
+        await StripeService.createRefund(payment.transactionId, refundAmount)
+      } else if (payment.provider === 'paypal' && payment.transactionId) {
+        await PayPalService.createRefund(payment.transactionId, refundAmount, currency)
+      } else if (payment.provider === 'airwallex' && payment.transactionId) {
+        await AirwallexService.createRefund(payment.transactionId, refundAmount, currency)
+      } else {
+        throw new Error(`Refund not supported for provider: ${payment.provider}`)
+      }
+
+      await db.insert(returnLogs).values({
+        id: uuidv4(),
+        returnId,
+        action: 'refund_initiated',
+        fromStatus: returnData.status,
+        toStatus: returnData.status,
+        operatorId,
+        operatorType: 'admin',
+        note: `发起 ${payment.provider} 退款 ¥${refundAmount} ${currency.toUpperCase()}`,
+        createdAt: new Date(),
+      })
+    } catch (err) {
+      console.error(`[Refund] Payment gateway refund failed:`, err)
+      throw err
+    }
+
+    await db.update(payments)
+      .set({ status: 'refunded', updatedAt: new Date() })
+      .where(eq(payments.id, payment.id))
 
     await db.update(returns)
       .set({
@@ -434,14 +516,63 @@ export const ReturnService = {
       id: uuidv4(),
       returnId,
       action: 'refund_completed',
-      fromStatus: 'approved',
+      fromStatus: returnData.status,
       toStatus: 'completed',
       operatorId,
       operatorType: 'admin',
-      note: `退款 ¥${refundAmount}`,
+      note: `退款完成: ¥${refundAmount} (${payment.provider})`,
       createdAt: new Date(),
     })
 
     return this.getById(returnId)
+  },
+
+  async getByOrderId(orderId: string, userId?: string) {
+    const conditions: any[] = [eq(returns.orderId, orderId)]
+    if (userId) {
+      conditions.push(eq(returns.userId, userId))
+    }
+
+    const [returnData] = await db
+      .select({
+        id: returns.id,
+        orderId: returns.orderId,
+        userId: returns.userId,
+        type: returns.type,
+        status: returns.status,
+        reason: returns.reason,
+        reasonDetail: returns.reasonDetail,
+        images: returns.images,
+        adminNote: returns.adminNote,
+        processedBy: returns.processedBy,
+        processedAt: returns.processedAt,
+        refundAmount: returns.refundAmount,
+        refundReason: returns.refundReason,
+        completedAt: returns.completedAt,
+        createdAt: returns.createdAt,
+        updatedAt: returns.updatedAt,
+        orderNumber: orders.orderNumber,
+      })
+      .from(returns)
+      .leftJoin(orders, eq(returns.orderId, orders.id))
+      .where(and(...conditions))
+      .limit(1)
+
+    if (!returnData) return null
+
+    let images: string[] = []
+    if (returnData.images) {
+      try {
+        images = JSON.parse(returnData.images as string)
+      } catch {
+        console.error('Failed to parse images JSON:', returnData.images)
+        images = []
+      }
+    }
+
+    return {
+      ...returnData,
+      images,
+    }
   },
 }

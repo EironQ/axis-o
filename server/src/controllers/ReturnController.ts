@@ -169,6 +169,26 @@ export const ReturnController = {
     }
   },
 
+  getByOrderId: async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.userId
+      const orderId = req.params.orderId as string
+
+      const returnData = await ReturnService.getByOrderId(orderId, userId)
+
+      res.json({
+        success: true,
+        data: returnData,
+      })
+    } catch (error) {
+      console.error('Get return by order error:', error)
+      res.status(500).json({
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch return' }
+      })
+    }
+  },
+
   adminList: async (req: Request, res: Response) => {
     try {
       const page = parseInt(getQueryString(req.query.page as string | string[]) || '1') || 1
@@ -271,7 +291,7 @@ export const ReturnController = {
     try {
       const returnId = req.params.id as string
       const adminId = req.user!.userId
-      const { refundAmount } = req.body
+      const { refundAmount, adminNote } = req.body
 
       if (!refundAmount || refundAmount <= 0) {
         res.status(400).json({
@@ -299,7 +319,7 @@ export const ReturnController = {
         return
       }
 
-      const updated = await ReturnService.refund(returnId, refundAmount, adminId)
+      const updated = await ReturnService.refund(returnId, refundAmount, adminId, adminNote)
 
       res.json({
         success: true,

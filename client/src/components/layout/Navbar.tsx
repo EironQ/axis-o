@@ -1,24 +1,30 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ShoppingBag, User, Menu, X, Search, LogOut } from 'lucide-react'
+import { ShoppingBag, User, Menu, X, Search, LogOut, Globe } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 import { useCartAnimationStore } from '@/store/cartAnimationStore'
 import { useSettings } from '@/context/SettingsContext'
+import { useTranslation, useLanguage } from '@/i18n'
 import Badge from '@/components/ui/Badge'
+import SearchOverlay from './SearchOverlay'
 
 const defaultNavLinks = [
-  { label: '首页', href: '/' },
-  { label: '经典系列', href: '/products?series=classic' },
-  { label: '轻奢系列', href: '/products?series=luxe' },
-  { label: '旅行系列', href: '/products?series=travel' },
-  { label: '关于我们', href: '/about' },
+  { key: 'nav.home', href: '/' },
+  { key: 'nav.classic', href: '/products?series=classic' },
+  { key: 'nav.luxe', href: '/products?series=luxe' },
+  { key: 'nav.travel', href: '/products?series=travel' },
+  { key: 'nav.about', href: '/about' },
 ]
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [langMenuOpen, setLangMenuOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const { store } = useSettings()
+  const { t } = useTranslation()
+  const { lang, setLang } = useLanguage()
   const itemCount = useCartStore((s) => s.items.reduce((sum, i) => sum + i.quantity, 0))
   const setCartIconRef = useCartAnimationStore((s) => s.setCartIconRef)
   const cartIconRef = useRef<HTMLAnchorElement>(null)
@@ -50,7 +56,7 @@ export default function Navbar() {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     setIsLoggedIn(false)
-    navigate('/')
+    navigate(`/${lang}`)
   }
 
   return (
@@ -65,29 +71,34 @@ export default function Navbar() {
         <button
           className="lg:hidden text-[#3C2415]"
           onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="菜单"
+          aria-label={t('nav.menu')}
         >
           {mobileOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
 
         <div className="hidden lg:flex items-center gap-10">
-          {defaultNavLinks.map((link) => (
-            <Link
-              key={link.href}
-              to={link.href}
-              className={`text-sm tracking-widest uppercase transition-colors duration-300 hover:text-[#C89460] ${
-                location.pathname === link.href.split('?')[0] &&
-                (!link.href.includes('?') || location.search === link.href.split('?')[1].replace('series=', ''))
-                  ? 'text-[#C89460]'
-                  : 'text-[#3C2415]/70'
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {defaultNavLinks.map((link) => {
+            const hrefBase = link.href.split('?')[0].replace('/', '')
+            const currentBase = location.pathname.split('/').filter(Boolean).slice(1).join('/')
+            const isActive = location.pathname.includes(`/${hrefBase}`) && (
+              !link.href.includes('?') || location.search === link.href.split('?')[1]
+            )
+            const href = `/${lang}${link.href}`
+            return (
+              <Link
+                key={link.key}
+                to={href}
+                className={`text-sm tracking-widest uppercase transition-colors duration-300 hover:text-[#C89460] ${
+                  isActive ? 'text-[#C89460]' : 'text-[#3C2415]/70'
+                }`}
+              >
+                {t(link.key as any)}
+              </Link>
+            )
+          })}
         </div>
 
-        <Link to="/" className="absolute left-1/2 -translate-x-1/2">
+        <Link to={`/${lang}`} className="absolute left-1/2 -translate-x-1/2">
           {store.store_logo ? (
             <img
               src={store.store_logo}
@@ -102,42 +113,76 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-5">
-          <button className="hidden sm:block text-[#3C2415]/70 hover:text-[#3C2415] transition-colors" aria-label="搜索">
+          <div className="relative">
+            <button
+              className="text-[#3C2415]/70 hover:text-[#3C2415] transition-colors text-xs tracking-wider uppercase flex items-center gap-1"
+              onClick={() => setLangMenuOpen(!langMenuOpen)}
+              aria-label="Switch language"
+            >
+              <Globe size={14} />
+              <span className="hidden sm:inline">{lang === 'zh' ? '中文' : 'EN'}</span>
+            </button>
+            {langMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setLangMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-2 bg-white shadow-lg border border-[#E5DDD3] z-20 min-w-[100px]">
+                  <button
+                    onClick={() => { setLang('zh'); setLangMenuOpen(false) }}
+                    className={`block w-full text-left px-4 py-2 text-sm hover:bg-[#F5F0E8] transition-colors ${lang === 'zh' ? 'text-[#C89460] font-medium' : 'text-[#3C2415]'}`}
+                  >
+                    中文
+                  </button>
+                  <button
+                    onClick={() => { setLang('en'); setLangMenuOpen(false) }}
+                    className={`block w-full text-left px-4 py-2 text-sm hover:bg-[#F5F0E8] transition-colors ${lang === 'en' ? 'text-[#C89460] font-medium' : 'text-[#3C2415]'}`}
+                  >
+                    English
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="hidden sm:block text-[#3C2415]/70 hover:text-[#3C2415] transition-colors"
+            aria-label={t('nav.search')}
+          >
             <Search size={18} />
           </button>
 
           {isLoggedIn ? (
             <>
               <Link
-                to="/profile"
+                to={`/${lang}/profile`}
                 className="text-[#3C2415]/70 hover:text-[#3C2415] transition-colors"
-                aria-label="个人中心"
+                aria-label={t('nav.profile')}
               >
                 <User size={18} />
               </Link>
               <button
                 onClick={handleLogout}
                 className="text-[#3C2415]/70 hover:text-red-500 transition-colors"
-                aria-label="退出登录"
+                aria-label={t('nav.logout')}
               >
                 <LogOut size={18} />
               </button>
             </>
           ) : (
             <Link
-              to="/login"
+              to={`/${lang}/login`}
               className="text-[#3C2415]/70 hover:text-[#3C2415] transition-colors"
-              aria-label="登录"
+              aria-label={t('nav.login')}
             >
               <User size={18} />
             </Link>
           )}
 
           <Link
-            to="/cart"
+            to={`/${lang}/cart`}
             ref={cartIconRef}
             className="relative text-[#3C2415]/70 hover:text-[#3C2415] transition-colors"
-            aria-label="购物车"
+            aria-label={t('nav.cart')}
           >
             <ShoppingBag size={18} />
             {itemCount > 0 && <Badge count={itemCount} />}
@@ -150,21 +195,22 @@ export default function Navbar() {
           <div className="flex flex-col px-8 py-6 space-y-4">
             {defaultNavLinks.map((link) => (
               <Link
-                key={link.href}
-                to={link.href}
+                key={link.key}
+                to={`/${lang}${link.href}`}
                 className={`text-sm tracking-widest uppercase transition-colors duration-300 hover:text-[#C89460] ${
-                  location.pathname === link.href.split('?')[0] &&
-                  (!link.href.includes('?') || location.search === link.href.split('?')[1].replace('series=', ''))
+                  location.pathname.includes(`/${link.href.split('?')[0].replace('/', '')}`)
                     ? 'text-[#C89460]'
                     : 'text-[#3C2415]/70'
                 }`}
               >
-                {link.label}
+                {t(link.key as any)}
               </Link>
             ))}
           </div>
         </div>
       )}
+
+      <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </header>
   )
 }

@@ -1,9 +1,12 @@
 import { Link } from 'react-router-dom'
 import { Minus, Plus, Trash2 } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
+import { useTranslation, useLanguage } from '@/i18n'
 
 export default function CartItemList() {
   const { items, removeItem, updateItem, isLoading, isUpdating } = useCartStore()
+  const { t } = useTranslation()
+  const { lang } = useLanguage()
 
   if (isLoading) {
     return (
@@ -16,13 +19,13 @@ export default function CartItemList() {
   if (items.length === 0) {
     return (
       <div className="text-center py-16">
-        <p className="text-xl font-['Playfair_Display'] text-[#3C2415] mb-3">购物车是空的</p>
-        <p className="text-sm text-[#3C2415]/50 mb-8">去挑选您心仪的包包吧</p>
+        <p className="text-xl font-['Playfair_Display'] text-[#3C2415] mb-3">{t('cart.empty')}</p>
+        <p className="text-sm text-[#3C2415]/50 mb-8">{t('cart.emptyHint')}</p>
         <Link
-          to="/products"
+          to={`/${lang}/products`}
           className="inline-flex items-center gap-2 text-sm tracking-widest uppercase text-[#C89460] hover:text-[#3C2415] transition-colors border-b border-[#C89460] pb-1"
         >
-          探索产品
+          {t('cart.exploreProducts')}
         </Link>
       </div>
     )
@@ -52,7 +55,7 @@ export default function CartItemList() {
       {items.map((item) => (
         <div key={item.id} className="flex gap-5 py-6 border-b border-[#3C2415]/5">
           <Link
-            to={`/products/${item.productId}`}
+            to={`/${lang}/products/${item.productId}`}
             className="w-24 h-32 flex-shrink-0 bg-[#F5F0E8] overflow-hidden"
           >
             {item.image ? (
@@ -63,7 +66,7 @@ export default function CartItemList() {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-[#3C2415]/20">
-                <span className="text-xs">暂无图片</span>
+                <span className="text-xs">{t('common.noImage')}</span>
               </div>
             )}
           </Link>
@@ -72,7 +75,7 @@ export default function CartItemList() {
             <div className="flex justify-between items-start">
               <div>
                 <Link
-                  to={`/products/${item.productId}`}
+                  to={`/${lang}/products/${item.productId}`}
                   className="text-sm text-[#3C2415] hover:text-[#C89460] transition-colors"
                 >
                   {item.productName}
@@ -97,7 +100,7 @@ export default function CartItemList() {
                       ? 'text-[#3C2415]/30 cursor-not-allowed'
                       : 'text-[#3C2415] hover:bg-[#3C2415]/5'
                   }`}
-                  aria-label="减少"
+                  aria-label={t('product.decrease')}
                 >
                   {isUpdating ? (
                     <div className="w-3 h-3 border-2 border-[#3C2415]/30 border-t-[#3C2415] rounded-full animate-spin"></div>
@@ -116,7 +119,7 @@ export default function CartItemList() {
                       ? 'text-[#3C2415]/30 cursor-not-allowed'
                       : 'text-[#3C2415] hover:bg-[#3C2415]/5'
                   }`}
-                  aria-label="增加"
+                  aria-label={t('product.increase')}
                 >
                   {isUpdating ? (
                     <div className="w-3 h-3 border-2 border-[#3C2415]/30 border-t-[#3C2415] rounded-full animate-spin"></div>
@@ -134,7 +137,7 @@ export default function CartItemList() {
                     ? 'text-[#3C2415]/15 cursor-not-allowed'
                     : 'text-[#3C2415]/30 hover:text-[#C17E60]'
                 }`}
-                aria-label="删除"
+                aria-label={t('cart.remove')}
               >
                 <Trash2 size={16} />
               </button>

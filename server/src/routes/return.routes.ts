@@ -10,6 +10,7 @@ router.use(authenticate)
 router.post('/', ReturnController.create)
 router.get('/', ReturnController.list)
 router.get('/:id', ReturnController.getById)
+router.get('/order/:orderId', ReturnController.getByOrderId)
 router.patch('/:id/cancel', ReturnController.cancel)
 
 export default router

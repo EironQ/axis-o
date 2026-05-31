@@ -10,7 +10,7 @@ import {
 export interface CartResponse {
   items: MockCartItem[]
   totalItems: number
-  subtotal: number
+  totalPrice: number
 }
 
 export interface AddCartItemRequest {
@@ -33,7 +33,7 @@ export interface CreateOrderRequest {
   shippingAddressId: string
   billingAddressId: string
   shippingMethod?: string
-  paymentProvider: 'stripe' | 'paypal' | 'alipay'
+  paymentProvider: 'stripe' | 'paypal' | 'airwallex'
   discountCode?: string
   notes?: string
   currency?: string
@@ -101,7 +101,7 @@ export const mockCartApi = {
     return {
       items: currentCartItems,
       totalItems: currentCartItems.reduce((sum, item) => sum + item.quantity, 0),
-      subtotal: currentCartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+      totalPrice: currentCartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
     }
   },
 

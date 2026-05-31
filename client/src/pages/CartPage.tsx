@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom'
 import CartItemList from '@/components/cart/CartItemList'
 import OrderSummary from '@/components/cart/OrderSummary'
 import { useCartStore } from '@/store/cartStore'
+import { useTranslation, useLanguage } from '@/i18n'
 
 export default function CartPage() {
   const { items, fetchCart, isLoading } = useCartStore()
+  const { t } = useTranslation()
+  const { lang } = useLanguage()
 
   useEffect(() => {
     fetchCart()
@@ -16,10 +19,10 @@ export default function CartPage() {
       <div className="pt-24 pb-16 bg-[#F5F0E8]">
         <div className="mx-auto max-w-[1440px] px-8 text-center">
           <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">
-            购物车
+            {t('cart.title')}
           </p>
           <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">
-            {!isLoading && items.length > 0 ? `您的美物 (${items.length})` : '您的美物'}
+            {!isLoading && items.length > 0 ? t('cart.yourItemsCount').replace('{count}', String(items.length)) : t('cart.yourItems')}
           </h1>
         </div>
       </div>
@@ -31,10 +34,10 @@ export default function CartPage() {
             {!isLoading && items.length > 0 && (
               <div className="mt-6">
                 <Link
-                  to="/products"
+                  to={`/${lang}/products`}
                   className="text-sm text-[#3C2415]/50 hover:text-[#C89460] transition-colors"
                 >
-                  ← 继续购物
+                  ← {t('cart.continueShopping')}
                 </Link>
               </div>
             )}

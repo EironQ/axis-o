@@ -52,6 +52,7 @@ router.get('/settings/public', async (_req, res) => {
       default_language: allSettings.default_language || 'zh',
       default_currency: allSettings.default_currency || 'USD',
       free_shipping_threshold: allSettings.free_shipping_threshold || '200',
+      shipping_fee: allSettings.shipping_fee || '50',
       estimated_delivery_days: allSettings.estimated_delivery_days || '7',
     }
 

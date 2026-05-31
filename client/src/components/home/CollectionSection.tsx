@@ -1,17 +1,21 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { collections } from '@/data/products'
+import { useTranslation, useLanguage } from '@/i18n'
 
 export default function CollectionSection() {
+  const { t } = useTranslation()
+  const { lang } = useLanguage()
+
   return (
     <section className="py-24 md:py-32 bg-[#FAF7F2]">
       <div className="mx-auto max-w-[1440px] px-8">
         <div className="text-center mb-16">
           <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">
-            精选系列
+            {t('home.selectedSeries')}
           </p>
           <h2 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">
-            为每一种风格而生
+            {t('home.forEveryStyle')}
           </h2>
         </div>
 
@@ -19,7 +23,7 @@ export default function CollectionSection() {
           {collections.map((col, i) => (
             <Link
               key={col.id}
-              to={col.link}
+              to={`/${lang}${col.link}`}
               className="group relative overflow-hidden aspect-[4/5] bg-[#F5F0E8]"
             >
               <img
@@ -33,11 +37,11 @@ export default function CollectionSection() {
                 style={{ transitionDelay: `${i * 100}ms` }}
               >
                 <h3 className="font-['Playfair_Display'] text-2xl md:text-3xl text-white mb-2">
-                  {col.title}
+                  {col.id === 'classic' ? t('nav.classic') : col.id === 'luxe' ? t('nav.luxe') : t('nav.travel')}
                 </h3>
-                <p className="text-sm text-white/70 mb-5">{col.subtitle}</p>
+                <p className="text-sm text-white/70 mb-5">{col.id === 'classic' ? t('home.classicDesc') : col.id === 'luxe' ? t('home.luxeDesc') : t('home.travelDesc')}</p>
                 <span className="inline-flex items-center gap-2 text-white text-sm tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  探索系列 <ArrowRight size={14} />
+                  {t('home.exploreSeries')} <ArrowRight size={14} />
                 </span>
               </div>
             </Link>

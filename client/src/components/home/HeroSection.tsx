@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useTranslation, useLanguage } from '@/i18n'
 
 interface HeroSlide {
   id: string
@@ -17,6 +18,8 @@ export default function HeroSection() {
   const [current, setCurrent] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
   const [loading, setLoading] = useState(true)
+  const { t } = useTranslation()
+  const { lang } = useLanguage()
 
   useEffect(() => {
     fetchBanners()
@@ -62,7 +65,7 @@ export default function HeroSection() {
   if (loading) {
     return (
       <section className="relative h-screen overflow-hidden bg-[#3C2415] flex items-center justify-center">
-        <div className="animate-pulse text-white/60 text-sm">加载中...</div>
+        <div className="animate-pulse text-white/60 text-sm">{t('home.loading')}</div>
       </section>
     )
   }
@@ -114,7 +117,7 @@ export default function HeroSection() {
               </div>
             )}
             <Link
-              to={slide.link}
+              to={`/${lang}${slide.link}`}
               className="inline-flex items-center gap-2 border border-white/60 px-10 py-4 text-white text-sm tracking-[0.2em] uppercase hover:bg-white hover:text-[#3C2415] transition-all duration-300"
             >
               {slide.linkText}
@@ -139,14 +142,14 @@ export default function HeroSection() {
       <button
         onClick={prev}
         className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors hidden md:block"
-        aria-label="上一张"
+        aria-label={t('home.prevSlide')}
       >
         <ChevronLeft size={40} strokeWidth={1} />
       </button>
       <button
         onClick={next}
         className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors hidden md:block"
-        aria-label="下一张"
+        aria-label={t('home.nextSlide')}
       >
         <ChevronRight size={40} strokeWidth={1} />
       </button>

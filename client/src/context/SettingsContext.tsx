@@ -9,6 +9,7 @@ export interface StoreSettings {
   default_language: string
   default_currency: string
   free_shipping_threshold: string
+  shipping_fee: string
   estimated_delivery_days: string
 }
 
@@ -42,6 +43,7 @@ const defaultStore: StoreSettings = {
   default_language: 'zh',
   default_currency: 'USD',
   free_shipping_threshold: '200',
+  shipping_fee: '50',
   estimated_delivery_days: '7',
 }
 

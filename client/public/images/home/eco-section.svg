@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" fill="none">
+  <rect width="800" height="1000" fill="#F5F0E8"/>
+  <rect x="100" y="150" width="600" height="700" rx="8" fill="#E8DED0"/>
+  <circle cx="400" cy="500" r="150" fill="#6B705C" opacity="0.3"/>
+  <path d="M400 350 Q450 400 400 500 Q350 600 400 650" stroke="#6B705C" stroke-width="8" fill="none"/>
+  <circle cx="400" cy="350" r="30" fill="#6B705C"/>
+  <text x="400" y="800" text-anchor="middle" fill="#3C2415" font-size="16" font-family="sans-serif">Eco-friendly materials</text>
+</svg>

@@ -1,5 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
+import { handleAuthError, createAuthHeaders } from './authHelper'
+
 export interface UserProfile {
   id: string
   email: string
@@ -36,51 +38,48 @@ export interface ApiResponse<T> {
   }
 }
 
-function getAuthHeaders() {
-  const token = localStorage.getItem('accessToken')
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  }
-}
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const res = await fetch(url, {
+    ...options,
+    headers: createAuthHeaders(),
+  })
 
-function handleAuthError(res: Response) {
   if (res.status === 401) {
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    window.location.href = '/login'
-    return true
+    const { refreshAccessToken } = await import('./authHelper')
+    const newToken = await refreshAccessToken()
+    if (newToken) {
+      return fetch(url, {
+        ...options,
+        headers: createAuthHeaders(),
+      })
+    } else {
+      handleAuthError()
+      throw new Error('Unauthorized')
+    }
   }
-  return false
+
+  return res
 }
 
 export const userService = {
   getProfile: async (): Promise<ApiResponse<UserProfile>> => {
-    const res = await fetch(`${API_BASE_URL}/auth/profile`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    })
-    if (handleAuthError(res)) return { success: false, error: { code: 'UNAUTHORIZED', message: 'Session expired' } }
+    const res = await fetchWithAuth(`${API_BASE_URL}/auth/profile`)
     return res.json()
   },
 
   updateProfile: async (data: UpdateProfileRequest): Promise<ApiResponse<UserProfile>> => {
-    const res = await fetch(`${API_BASE_URL}/auth/profile`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/auth/profile`, {
       method: 'PUT',
-      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     })
-    if (handleAuthError(res)) return { success: false, error: { code: 'UNAUTHORIZED', message: 'Session expired' } }
     return res.json()
   },
 
   changePassword: async (data: ChangePasswordRequest): Promise<ApiResponse<{ message: string }>> => {
-    const res = await fetch(`${API_BASE_URL}/auth/change-password`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/auth/change-password`, {
       method: 'PUT',
-      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     })
-    if (handleAuthError(res)) return { success: false, error: { code: 'UNAUTHORIZED', message: 'Session expired' } }
     return res.json()
   },
 }

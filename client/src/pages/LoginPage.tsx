@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authService } from '@/services/auth'
 import { useSettings } from '@/context/SettingsContext'
+import { useLanguage, useTranslation } from '@/i18n'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { lang } = useLanguage()
+  const { t } = useTranslation()
   const { store } = useSettings()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,12 +25,12 @@ export default function LoginPage() {
       if (response.success && response.data) {
         localStorage.setItem('accessToken', response.data.accessToken)
         localStorage.setItem('refreshToken', response.data.refreshToken)
-        navigate('/profile')
+        navigate(`/${lang}/profile`)
       } else {
-        setError(response.error?.message || '登录失败')
+        setError(response.error?.message || (lang === 'zh' ? '登录失败' : 'Login failed'))
       }
     } catch {
-      setError('网络错误，请稍后重试')
+      setError(lang === 'zh' ? '网络错误，请稍后重试' : 'Network error, please try again later')
     } finally {
       setIsLoading(false)
     }
@@ -38,7 +41,7 @@ export default function LoginPage() {
       <div className="pt-24 pb-16 bg-[#F5F0E8]">
         <div className="mx-auto max-w-[1440px] px-8 text-center">
           <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">{store.store_name}</p>
-          <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">登录</h1>
+          <h1 className="font-['Playfair_Display'] text-3xl md:text-4xl text-[#3C2415]">{lang === 'zh' ? '登录' : 'Sign In'}</h1>
         </div>
       </div>
 
@@ -46,7 +49,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-[#3C2415] mb-2">
-              邮箱地址
+              {lang === 'zh' ? '邮箱地址' : 'Email Address'}
             </label>
             <input
               type="email"
@@ -61,7 +64,7 @@ export default function LoginPage() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-[#3C2415] mb-2">
-              密码
+              {lang === 'zh' ? '密码' : 'Password'}
             </label>
             <input
               type="password"
@@ -83,13 +86,13 @@ export default function LoginPage() {
             disabled={isLoading}
             className="w-full py-3 px-6 bg-[#3C2415] text-white font-medium tracking-wider uppercase hover:bg-[#2A1A0F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? '登录中...' : '登录'}
+            {isLoading ? (lang === 'zh' ? '登录中...' : 'Signing In...') : (lang === 'zh' ? '登录' : 'Sign In')}
           </button>
 
           <p className="text-center text-sm text-[#3C2415]/60">
-            还没有账号？{' '}
-            <Link to="/register" className="text-[#C89460] hover:underline">
-              立即注册
+            {lang === 'zh' ? '还没有账号？' : 'Don\'t have an account? '}
+            <Link to={`/${lang}/register`} className="text-[#C89460] hover:underline">
+              {lang === 'zh' ? '立即注册' : 'Sign Up'}
             </Link>
           </p>
         </form>
