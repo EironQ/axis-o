@@ -18,12 +18,18 @@ export default function HeroSection() {
   const [current, setCurrent] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [imageError, setImageError] = useState<string | null>(null)
   const { t } = useTranslation()
   const { lang } = useLanguage()
 
   useEffect(() => {
     fetchBanners()
   }, [])
+
+  // 切换slide时重置图片错误状态
+  useEffect(() => {
+    setImageError(null)
+  }, [current])
 
   const fetchBanners = async () => {
     try {
@@ -32,6 +38,7 @@ export default function HeroSection() {
       const result = await response.json()
       if (result.success && result.data && result.data.length > 0) {
         setSlides(result.data)
+        setCurrent(0)
       } else {
         setSlides([])
       }
@@ -43,24 +50,27 @@ export default function HeroSection() {
   }
 
   const goTo = useCallback((index: number) => {
-    if (isAnimating) return
+    if (isAnimating || slides.length === 0) return
     setIsAnimating(true)
     setCurrent(index)
     setTimeout(() => setIsAnimating(false), 600)
-  }, [isAnimating])
+  }, [isAnimating, slides.length])
 
   const next = useCallback(() => {
+    if (slides.length === 0) return
     goTo((current + 1) % slides.length)
-  }, [current, goTo])
+  }, [current, goTo, slides.length])
 
   const prev = useCallback(() => {
+    if (slides.length === 0) return
     goTo((current - 1 + slides.length) % slides.length)
-  }, [current, goTo])
+  }, [current, goTo, slides.length])
 
   useEffect(() => {
+    if (slides.length === 0) return
     const timer = setInterval(next, 6000)
     return () => clearInterval(timer)
-  }, [next])
+  }, [next, slides.length])
 
   if (loading) {
     return (
@@ -70,13 +80,31 @@ export default function HeroSection() {
     )
   }
 
-  if (slides.length === 0) return null
+  if (slides.length === 0) {
+    return (
+      <section className="relative h-screen overflow-hidden bg-[#3C2415] flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="font-['Playfair_Display'] text-4xl md:text-5xl text-white mb-4">
+            {t('home.welcome') || 'Welcome to AXIS O'}
+          </h1>
+          <p className="text-white/60">{t('home.explore') || 'Explore our collection'}</p>
+        </div>
+      </section>
+    )
+  }
 
-  const slide = slides[current]
-  if (!slide) return null
+  const slide = slides[current] || slides[0]
+  if (!slide) {
+    return (
+      <section className="relative h-screen overflow-hidden bg-[#3C2415] flex items-center justify-center">
+        <div className="text-white/60">Loading banner...</div>
+      </section>
+    )
+  }
 
   const getImageUrl = (path: string) => {
-    if (path.startsWith('http')) return path
+    if (!path) return ''
+    if (path.startsWith('http://') || path.startsWith('https://')) return path
     if (path.startsWith('/')) return path
     return `/${path}`
   }
@@ -87,12 +115,17 @@ export default function HeroSection() {
         className="absolute inset-0 transition-opacity duration-700"
         style={{ opacity: isAnimating ? 0.5 : 1 }}
       >
-        <img
-          src={getImageUrl(slide.image)}
-          alt={slide.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#3C2415]/40 to-transparent" />
+        {!imageError && slide.image ? (
+          <img
+            src={getImageUrl(slide.image)}
+            alt={slide.title}
+            className="w-full h-full object-cover"
+            onError={() => setImageError(slide.id)}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-[#5D4E37] via-[#3C2415] to-[#2A1F14]" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#3C2415]/60 via-transparent to-transparent" />
       </div>
 
       <div className="absolute inset-0 flex items-center">

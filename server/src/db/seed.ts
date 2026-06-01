@@ -277,6 +277,25 @@ async function seed() {
     console.log('✅ Test user created: customer@example.com / password123')
   }
 
+  const existingAdmin = await db.select({ id: users.id }).from(users).where(eq(users.email, 'admin@example.com')).limit(1)
+  if (existingAdmin.length === 0) {
+    const adminPasswordHash = await hashPassword('admin123')
+    await db.insert(users).values({
+      id: uuidv4(),
+      email: 'admin@example.com',
+      passwordHash: adminPasswordHash,
+      firstName: 'Admin',
+      lastName: 'User',
+      phone: '13900139000',
+      role: 'admin',
+      status: 'active',
+      preferredLanguage: 'zh',
+    })
+    console.log('✅ Admin user created: admin@example.com / admin123')
+  } else {
+    console.log('⏭️ Admin user already exists: admin@example.com')
+  }
+
   const existingAddress = await db.select({ id: addresses.id }).from(addresses).where(eq(addresses.userId, testUserId)).limit(1)
   let addressId: string
 
