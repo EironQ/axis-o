@@ -37,7 +37,7 @@ export default function OrderSummary() {
       <div className="space-y-4">
         <div className="flex justify-between text-sm">
           <span className="text-[#3C2415]/60">{t('cart.subtotal')}</span>
-          <span className="text-[#3C2415]">${totalPrice.toLocaleString()}</span>
+          <span className="text-[#3C2415]">${totalPrice !== undefined ? totalPrice.toLocaleString() : '0'}</span>
         </div>
         {shipping > 0 && (
           <>
@@ -53,7 +53,7 @@ export default function OrderSummary() {
         <div className="border-t border-[#3C2415]/10 pt-4 flex justify-between">
           <span className="text-sm text-[#3C2415]">{t('cart.total')}</span>
           <span className="text-lg font-['Playfair_Display'] text-[#3C2415]">
-            ${total.toLocaleString()}
+            ${total !== undefined ? total.toLocaleString() : '0'}
           </span>
         </div>
       </div>

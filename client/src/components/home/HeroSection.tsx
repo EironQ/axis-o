@@ -85,9 +85,9 @@ export default function HeroSection() {
       <section className="relative h-screen overflow-hidden bg-[#3C2415] flex items-center justify-center">
         <div className="text-center">
           <h1 className="font-['Playfair_Display'] text-4xl md:text-5xl text-white mb-4">
-            {t('home.welcome') || 'Welcome to AXIS O'}
+            {'Welcome to AXIS O'}
           </h1>
-          <p className="text-white/60">{t('home.explore') || 'Explore our collection'}</p>
+          <p className="text-white/60">{t('home.shopNow') || 'Explore our collection'}</p>
         </div>
       </section>
     )

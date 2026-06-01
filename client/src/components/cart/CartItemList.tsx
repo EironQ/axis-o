@@ -86,7 +86,7 @@ export default function CartItemList() {
                 </div>
               </div>
               <p className="text-sm text-[#3C2415]">
-                ${item.price.toLocaleString()}
+                ${item.price !== undefined ? item.price.toLocaleString() : '0'}
               </p>
             </div>
 
