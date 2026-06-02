@@ -440,7 +440,7 @@ export const cartApi = {
             totalPrice: item.price * item.quantity,
           })),
           totalItems: result.totalItems,
-          totalPrice: result.subtotal,
+          totalPrice: result.totalPrice,
         }
       }
     }
