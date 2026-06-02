@@ -178,7 +178,7 @@
     "total": "合计",
     "freeShippingThreshold": "满 ${threshold} 即可享受免费配送",
     "checkout": "去结算 ({count})",
-    "paymentMethods": "支持 Stripe · PayPal · Alipay"
+    "paymentMethods": "支持 PayPal · Airwallex · Lianlianpay"
   },
   "checkout": {
     "title": "支付",

@@ -178,7 +178,7 @@
     "total": "Total",
     "freeShippingThreshold": "Free shipping on orders over ${threshold}",
     "checkout": "Checkout ({count})",
-    "paymentMethods": "Accepts Stripe · PayPal · Alipay"
+    "paymentMethods": "Accepts PayPal · Airwallex · Lianlianpay"
   },
   "checkout": {
     "title": "Checkout",
