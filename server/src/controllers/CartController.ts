@@ -40,7 +40,9 @@ export const CartController = {
             .where(and(eq(productImages.productId, item.productId), eq(productImages.isPrimary, 1)))
             .limit(1)
 
-          const price = parseFloat(item.basePrice.toString()) + parseFloat(item.priceAdjustment.toString())
+          const basePrice = parseFloat(item.basePrice.toString()) || 0
+          const priceAdj = parseFloat(item.priceAdjustment.toString()) || 0
+          const price = basePrice + priceAdj
 
           return {
             ...item,
