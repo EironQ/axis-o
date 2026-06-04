@@ -27,8 +27,8 @@ async function updateSettings() {
   try {
     // 删除旧的 antym 字段
     console.log('1. 删除旧的 antym 字段...')
-    const deleted = await db.delete(settings).where(inArray(settings.key, OLD_KEYS_TO_DELETE))
-    console.log(`   删除了 ${deleted.rowsAffected} 条记录`)
+    await db.delete(settings).where(inArray(settings.key, OLD_KEYS_TO_DELETE))
+    console.log('   删除完成')
 
     // 添加新字段
     console.log('\n2. 添加新的支付设置字段...')
