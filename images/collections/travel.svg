@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" fill="none">
+  <rect width="800" height="1000" fill="#F5F0E8"/>
+  <rect x="150" y="100" width="500" height="800" rx="8" fill="#FAF7F2"/>
+  <rect x="200" y="200" width="400" height="500" rx="4" fill="#6B705C"/>
+  <rect x="250" y="250" width="300" height="80" rx="4" fill="#FAF7F2"/>
+  <rect x="250" y="380" width="300" height="30" rx="2" fill="#FAF7F2" opacity="0.5"/>
+  <rect x="250" y="430" width="300" height="30" rx="2" fill="#FAF7F2" opacity="0.5"/>
+  <rect x="250" y="480" width="300" height="30" rx="2" fill="#FAF7F2" opacity="0.5"/>
+  <line x1="250" y1="550" x2="550" y2="550" stroke="#FAF7F2" stroke-width="2"/>
+  <text x="400" y="850" text-anchor="middle" fill="#3C2415" font-size="18" font-family="serif">旅行系列</text>
+</svg>

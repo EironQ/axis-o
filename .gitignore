@@ -33,3 +33,12 @@ dist-ssr
 
 # Docker
 docker-compose.override.yml
+# Sensitive & build artifacts
+.env.production
+assets/
+uploads/
+server/gen_hash.js
+server/reset_admin.mjs
+server/reset_pwd.ts
+server/src/app.ts.bak.*
+server/src/app.ts.bak.debug

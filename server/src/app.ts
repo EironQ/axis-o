@@ -21,6 +21,7 @@ const corsOptions = {
         origin.startsWith('http://192.168.') || 
         origin.startsWith('http://10.') ||
         origin.startsWith('http://172.')
+        origin === 'https://axis.cnprodo.com' ||
     ) {
       callback(null, true)
     } else {
