@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { adminAuthenticate } from '../middleware/auth'
-import { productImageUpload } from '../middleware/upload'
+import { productImageUpload, bannerImageUpload } from '../middleware/upload'
 
 type RouterType = ReturnType<typeof Router>
 const router: RouterType = Router()
@@ -23,6 +23,26 @@ router.post(
     res.json({
       success: true,
       data: { urls },
+    })
+  }
+)
+
+router.post(
+  '/banner',
+  bannerImageUpload.single('image'),
+  (req: Request, res: Response) => {
+    const file = req.file as Express.Multer.File
+
+    if (!file) {
+      res.status(400).json({ success: false, error: { code: 'NO_FILE', message: 'No image file uploaded' } })
+      return
+    }
+
+    const url = `/uploads/banners/${file.filename}`
+
+    res.json({
+      success: true,
+      data: { url },
     })
   }
 )

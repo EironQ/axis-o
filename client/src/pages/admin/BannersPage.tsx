@@ -82,8 +82,8 @@ export default function BannersPage() {
     setIsUploading(true)
     setError('')
     try {
-      const urls = await uploadService.uploadImages([file])
-      setForm({ ...form, image: urls[0] })
+      const url = await uploadService.uploadBanner(file)
+      setForm({ ...form, image: url })
     } catch (err: any) {
       setError(err.message || '上传失败')
     } finally {
