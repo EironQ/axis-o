@@ -42,3 +42,5 @@ server/reset_admin.mjs
 server/reset_pwd.ts
 server/src/app.ts.bak.*
 server/src/app.ts.bak.debug
+server/uploads/
+client/dist/
