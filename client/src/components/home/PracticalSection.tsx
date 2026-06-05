@@ -24,7 +24,18 @@ export default function PracticalSection() {
     <section className="py-24 md:py-32 bg-white">
       <div className="mx-auto max-w-[1440px] px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <div className="order-2 lg:order-1">
+          <div className="order-1 lg:order-1 relative">
+            <div className="aspect-[4/5] bg-[#F5F0E8] overflow-hidden">
+              <img
+                src={homeImages.practical}
+                alt="Convenient storage"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="absolute -bottom-6 -left-6 w-48 h-48 bg-[#C89460]/10 hidden lg:block" />
+          </div>
+
+          <div className="order-2 lg:order-2">
             <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-4">
               {t('home.userFriendly')}
             </p>
@@ -52,17 +63,6 @@ export default function PracticalSection() {
             <p className="text-xs tracking-[0.3em] uppercase text-[#C89460]">
               {t('home.userFriendlyDesc')}
             </p>
-          </div>
-
-          <div className="order-1 lg:order-2 relative">
-            <div className="aspect-[4/5] bg-[#F5F0E8] overflow-hidden">
-              <img
-                src={homeImages.practical}
-                alt="Convenient storage"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="absolute -bottom-6 -left-6 w-48 h-48 bg-[#C89460]/10 hidden lg:block" />
           </div>
         </div>
       </div>

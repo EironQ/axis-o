@@ -10,10 +10,10 @@ export default function HomePage() {
   return (
     <main>
       <HeroSection />
-      <EcoSection />
+      <BestSellersSection />
       <CollectionSection />
       <QualitySection />
-      <BestSellersSection />
+      <EcoSection />
       <PracticalSection />
       <BrandStorySection />
     </main>
