@@ -10,6 +10,7 @@ import { OrderController } from '../controllers/OrderController'
 import { PaymentController } from '../controllers/PaymentController'
 import { UserController } from '../controllers/UserController'
 import { ReturnController } from '../controllers/ReturnController'
+import { bannerImageUpload } from '../middleware/upload'
 import settingsRoutes from './settings.routes'
 
 type RouterType = ReturnType<typeof Router>
@@ -24,8 +25,8 @@ router.get('/dashboard', AdminController.getDashboard)
 
 router.get('/banners', BannerController.adminList)
 router.get('/banners/:id', BannerController.adminGetById)
-router.post('/banners', BannerController.create)
-router.put('/banners/:id', BannerController.update)
+router.post('/banners', bannerImageUpload.single('image'), BannerController.create)
+router.put('/banners/:id', bannerImageUpload.single('image'), BannerController.update)
 router.delete('/banners/:id', BannerController.delete)
 
 router.get('/products', validate(adminProductQuerySchema, 'query'), ProductController.adminList)

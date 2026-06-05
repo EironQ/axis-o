@@ -66,17 +66,20 @@ export const BannerController = {
 
   create: async (req: Request, res: Response) => {
     try {
-      const { image, title, subtitle, link, linkText, tags, sortOrder, isActive } = req.body
+      const file = req.file as Express.Multer.File
+      const { title, subtitle, link, linkText, tags, sortOrder, isActive } = req.body
+
+      const imageUrl = file ? `/uploads/banners/${file.filename}` : ''
 
       const id = uuidv4()
       await db.insert(banners).values({
         id,
-        image: image || '',
+        image: imageUrl,
         title: title || '',
         subtitle: subtitle || '',
         link: link || '/products',
         linkText: linkText || 'Shop Now',
-        tags: tags ? JSON.stringify(tags) : null,
+        tags: tags ? JSON.stringify(typeof tags === 'string' ? JSON.parse(tags) : tags) : null,
         sortOrder: sortOrder || 0,
         isActive: isActive !== undefined ? (isActive ? 1 : 0) : 1,
       })
@@ -99,15 +102,22 @@ export const BannerController = {
         return
       }
 
-      const { image, title, subtitle, link, linkText, tags, sortOrder, isActive } = req.body
+      const file = req.file as Express.Multer.File
+      const { title, subtitle, link, linkText, tags, sortOrder, isActive, image } = req.body
 
       const updateData: Record<string, any> = { updatedAt: new Date() }
-      if (image !== undefined) updateData.image = image
+      
+      if (file) {
+        updateData.image = `/uploads/banners/${file.filename}`
+      } else if (image !== undefined) {
+        updateData.image = image
+      }
+      
       if (title !== undefined) updateData.title = title
       if (subtitle !== undefined) updateData.subtitle = subtitle
       if (link !== undefined) updateData.link = link
       if (linkText !== undefined) updateData.linkText = linkText
-      if (tags !== undefined) updateData.tags = JSON.stringify(tags)
+      if (tags !== undefined) updateData.tags = JSON.stringify(typeof tags === 'string' ? JSON.parse(tags) : tags)
       if (sortOrder !== undefined) updateData.sortOrder = sortOrder
       if (isActive !== undefined) updateData.isActive = isActive ? 1 : 0
 
