@@ -67,9 +67,9 @@ export const BannerController = {
   create: async (req: Request, res: Response) => {
     try {
       const file = req.file as Express.Multer.File
-      const { title, subtitle, link, linkText, tags, sortOrder, isActive } = req.body
+    const { title, subtitle, link, linkText, tags, sortOrder, isActive, image } = req.body
 
-      const imageUrl = file ? `/uploads/banners/${file.filename}` : ''
+      const imageUrl = file ? `/uploads/banners/${file.filename}` : (image || '')
 
       const id = uuidv4()
       await db.insert(banners).values({

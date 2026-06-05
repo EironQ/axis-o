@@ -21,7 +21,9 @@ const corsOptions = {
         origin.startsWith('http://192.168.') || 
         origin.startsWith('http://10.') ||
         origin.startsWith('http://172.') ||
-        origin === 'https://axis.cnprodo.com'
+        origin === 'https://axis.cnprodo.com' ||
+        origin.startsWith('https://') ||
+        origin.startsWith('http://')
     ) {
       callback(null, true)
     } else {
@@ -39,6 +41,7 @@ app.use('/api/payments/webhook', express.raw({ type: 'application/json' }))
 app.use('/api/payments/paypal/webhook', express.raw({ type: 'application/json' }))
 
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')))
+app.use('/api/uploads', express.static(path.join(__dirname, '..', 'uploads')))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
 

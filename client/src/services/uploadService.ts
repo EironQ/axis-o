@@ -1,4 +1,5 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
+const IMAGE_BASE_URL = import.meta.env.VITE_IMAGE_BASE_URL || ''
 
 const getToken = () => localStorage.getItem('adminToken')
 
@@ -45,6 +46,9 @@ export const uploadService = {
 
   getImageUrl: (path: string): string => {
     if (path.startsWith('http')) return path
+    if (path.startsWith('/uploads/')) {
+      return `${IMAGE_BASE_URL}${path}`
+    }
     if (path.startsWith('/')) return path
     return `/${path}`
   },
