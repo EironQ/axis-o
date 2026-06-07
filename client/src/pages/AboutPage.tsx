@@ -47,7 +47,7 @@ const timeline: TimelineItem[] = [
       },
     ],
     quote: { zh: '在没有标准的地方，建立自己的标准。', en: 'Where there are no standards, create your own.' },
-    image: 'https://images.pexels.com/photos/3184398/pexels-photo-3184398.jpeg?auto=compress&cs=tinysrgb&w=600',
+    image: '/images/about/1.jpg',
     tag: { zh: '匠心的定义', en: 'Defining Craftsmanship' },
   },
   {
@@ -69,7 +69,7 @@ const timeline: TimelineItem[] = [
       },
     ],
     quote: { zh: '瑕疵不分大小，只看能不能装作不知道。', en: 'A flaw is a flaw — the only question is whether you can pretend not to see it.' },
-    image: 'https://images.pexels.com/photos/1206258/pexels-photo-1206258.jpeg?auto=compress&cs=tinysrgb&w=600',
+    image: '/images/about/2.jpg',
     tag: { zh: '面对瑕疵的选择', en: 'Confronting Imperfection' },
   },
   {
@@ -97,7 +97,7 @@ const timeline: TimelineItem[] = [
         en: 'That year, AXIS O sold 1,200 units — zero advertising, all word-of-mouth.'
       },
     ],
-    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600',
+    image: '/images/about/3.jpg',
     tag: { zh: '从一只包到一个体系', en: 'From a Bag to a System' },
   },
   {
@@ -122,7 +122,7 @@ const timeline: TimelineItem[] = [
       },
     ],
     quote: { zh: '匠心的延伸：好东西不应该被扔掉，也不应该让地球来承担"扔掉"的代价。', en: 'The extension of craftsmanship: good things shouldn\'t be thrown away, and the Earth shouldn\'t bear the cost.' },
-    image: 'https://images.pexels.com/photos/4219654/pexels-photo-4219654.jpeg?auto=compress&cs=tinysrgb&w=600',
+    image: '/images/about/4.jpg',
     tag: { zh: '可持续的工程实践', en: 'Sustainable Engineering' },
   },
   {
@@ -147,7 +147,7 @@ const timeline: TimelineItem[] = [
       text: { zh: '我们不是没有机会做快一点、卖多一点。我们只是选择不做。', en: 'It\'s not that we never had the chance to go faster or sell more. We simply chose not to.' },
       author: { zh: 'Kei · 年度内部信', en: 'Kei · Annual Internal Letter' },
     },
-    image: 'https://images.pexels.com/photos/3184420/pexels-photo-3184420.jpeg?auto=compress&cs=tinysrgb&w=600',
+    image: '/images/about/5.jpg',
     tag: { zh: '不说话的品质', en: 'Quiet Quality' },
   },
 ]

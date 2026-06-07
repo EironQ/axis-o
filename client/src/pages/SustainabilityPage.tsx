@@ -2,7 +2,6 @@ import { useTranslation } from '@/i18n'
 import { useLanguage } from '@/i18n'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Leaf, Globe, Recycle, Award } from 'lucide-react'
-import { homeImages } from '@/assets/images'
 
 export default function SustainabilityPage() {
   const { t } = useTranslation()
@@ -97,7 +96,7 @@ export default function SustainabilityPage() {
             </div>
             <div className="aspect-[4/5] bg-[#E8DED0] overflow-hidden">
               <img
-                src={homeImages.eco}
+                src="/images/sustainability/1.jpg"
                 alt={t('sustainability.why')}
                 className="w-full h-full object-cover"
               />
@@ -143,7 +142,7 @@ export default function SustainabilityPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="aspect-[4/5] bg-[#E8DED0] overflow-hidden order-2 lg:order-1">
               <img
-                src={homeImages.brandStory}
+                src="/images/sustainability/2.jpg"
                 alt={t('sustainability.impact')}
                 className="w-full h-full object-cover"
               />

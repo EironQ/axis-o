@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Leaf, Scissors, Shield, Globe } from 'lucide-react'
 import { useTranslation, useLanguage } from '@/i18n'
-import { homeImages } from '@/assets/images'
+
 
 const getFeatures = (t: (key: any) => string) => [
   {
@@ -76,7 +76,7 @@ export default function BrandStorySection() {
           <div className="order-1 lg:order-2 relative">
             <div className="aspect-[4/5] bg-[#F5F0E8] overflow-hidden">
               <img
-                src={homeImages.brandStory}
+                src="/images/home/practical-section.jpg"
                 alt="Craftsmanship"
                 className="w-full h-full object-cover"
               />

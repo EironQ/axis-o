@@ -1,6 +1,6 @@
 import { Feather, LayoutGrid, Repeat } from 'lucide-react'
 import { useTranslation } from '@/i18n'
-import { homeImages } from '@/assets/images'
+
 
 const features = [
   {
@@ -27,7 +27,7 @@ export default function PracticalSection() {
           <div className="order-1 lg:order-1 relative">
             <div className="aspect-[4/5] bg-[#F5F0E8] overflow-hidden">
               <img
-                src={homeImages.practical}
+                src="/images/home/brand-story.jpg"
                 alt="Convenient storage"
                 className="w-full h-full object-cover"
               />

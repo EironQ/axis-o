@@ -1,5 +1,4 @@
 import { Product, CollectionCard } from '@/types'
-import { collectionImages } from '@/assets/images'
 import { IMG } from './mockData'
 
 export const collections: CollectionCard[] = [
@@ -7,7 +6,7 @@ export const collections: CollectionCard[] = [
     id: 'classic',
     title: '经典系列',
     subtitle: '简约百搭，日常优雅',
-    image: collectionImages.classic,
+    image: '/images/collections/classic.jpg',
     link: '/products?series=classic',
     series: 'classic',
   },
@@ -15,7 +14,7 @@ export const collections: CollectionCard[] = [
     id: 'luxe',
     title: '轻奢系列',
     subtitle: '精致宴会，高级质感',
-    image: collectionImages.luxe,
+    image: '/images/collections/luxe.jpg',
     link: '/products?series=luxe',
     series: 'luxe',
   },
@@ -23,7 +22,7 @@ export const collections: CollectionCard[] = [
     id: 'travel',
     title: '旅行系列',
     subtitle: '周末出行，实用大容量',
-    image: collectionImages.travel,
+    image: '/images/collections/travel.jpg',
     link: '/products?series=travel',
     series: 'travel',
   },
@@ -180,7 +179,7 @@ export const products: Product[] = [
       {
         image: IMG('detailed view of leather backpack zipper and stitching, premium craftsmanship, close up of precision sewing, high quality hardware, warm lighting'),
         title: '精湛缝制工艺',
-        description: '每一处缝线都由经验丰富的匠人手工完成，针脚均匀紧密。YKK拉链经过严格测试，确保开合顺畅且经久耐用。',
+        description: '每一处缝线都由经验丰富的匠人手工完成，针脚均匀紧密。拉链经过严格测试，确保开合顺畅且经久耐用。',
       },
     ],
   },

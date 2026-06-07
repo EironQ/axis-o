@@ -1,6 +1,5 @@
 import { Shield, Gem, Scissors } from 'lucide-react'
 import { useTranslation } from '@/i18n'
-import { homeImages } from '@/assets/images'
 
 const features = [
   {
@@ -27,7 +26,7 @@ export default function QualitySection() {
           <div className="relative">
             <div className="aspect-[4/5] bg-[#E8DED0] overflow-hidden">
               <img
-                src={homeImages.quality}
+                src="/images/home/quality-section.jpg"
                 alt="Hardware detail"
                 className="w-full h-full object-cover"
               />

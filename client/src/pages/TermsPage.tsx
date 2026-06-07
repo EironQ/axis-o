@@ -89,7 +89,7 @@ const sections = [
     title: '联系我们',
     type: 'contact',
     items: [
-      '电子邮件：hreiron@gmail.com',
+      '电子邮件：axis-o@qq.com',
       '客服电话：[请填写您的客服电话]',
       '办公地址：[请填写您的办公地址]',
     ],

@@ -1,6 +1,5 @@
 import { Leaf, Globe, Recycle } from 'lucide-react'
 import { useTranslation } from '@/i18n'
-import { homeImages } from '@/assets/images'
 
 const features = [
   {
@@ -61,7 +60,7 @@ export default function EcoSection() {
           <div className="order-1 lg:order-2 relative">
             <div className="aspect-[4/5] bg-[#F5F0E8] overflow-hidden">
               <img
-                src={homeImages.eco}
+                src="/images/home/eco-section.jpg"
                 alt="Eco materials"
                 className="w-full h-full object-cover"
               />

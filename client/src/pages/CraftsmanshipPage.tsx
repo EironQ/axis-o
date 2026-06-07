@@ -2,7 +2,6 @@ import { useTranslation } from '@/i18n'
 import { useLanguage } from '@/i18n'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Check } from 'lucide-react'
-import { collectionImages } from '@/assets/images'
 
 export default function CraftsmanshipPage() {
   const { t } = useTranslation()
@@ -101,7 +100,7 @@ export default function CraftsmanshipPage() {
             </div>
             <div className="aspect-[4/5] bg-[#E8DED0] overflow-hidden">
               <img
-                src={collectionImages.classic}
+                src="/images/craftsmanship/1.jpg"
                 alt={t('craftsmanship.materials')}
                 className="w-full h-full object-cover"
               />
@@ -148,7 +147,7 @@ export default function CraftsmanshipPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="aspect-[4/5] bg-[#E8DED0] overflow-hidden order-2 lg:order-1">
               <img
-                src={collectionImages.luxe}
+                src="/images/craftsmanship/2.jpg"
                 alt={t('craftsmanship.care')}
                 className="w-full h-full object-cover"
               />
