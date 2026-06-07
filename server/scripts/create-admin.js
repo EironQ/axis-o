@@ -4,7 +4,7 @@ const { users } = require('../dist/server/src/db/schema');
 
 async function createAdmin() {
   try {
-    const adminEmail = 'admin@axiso.com';
+    const adminEmail = 'axis-o@qq.com';
     const adminPassword = 'password';
     
     const existingAdmin = await db.select().from(users).where({ email: adminEmail }).limit(1);

@@ -13,7 +13,7 @@ async function createAdmin() {
     });
 
     const db = drizzle(connection);
-    const adminEmail = 'admin@axiso.com';
+    const adminEmail = 'axis-o@qq.com';
     const adminPassword = 'password';
 
     const existingAdmin = await db.select().from(users).where({ email: adminEmail }).limit(1);

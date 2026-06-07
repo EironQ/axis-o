@@ -57,7 +57,7 @@ export const EmailService = {
       smtpPort: parseInt(settings.smtp_port || process.env.SMTP_PORT || '587'),
       smtpUser: settings.smtp_user || process.env.SMTP_USER || '',
       smtpPass: settings.smtp_password || process.env.SMTP_PASS || '',
-      fromEmail: settings.smtp_from_email || env.EMAIL_FROM || 'noreply@axiso.com',
+      fromEmail: settings.smtp_from_email || env.EMAIL_FROM || 'axis-o@qq.com',
       fromName: settings.smtp_from_name || 'AXIS O',
     }
   },
@@ -454,7 +454,7 @@ function generateOrderConfirmationTemplate(data: OrderEmailData): string {
 
       <div class="footer">
         <p>You can view your order details by logging into your account.</p>
-        <p>If you have any questions, please contact us at <a href="mailto:support@axiso.com">support@axiso.com</a>.</p>
+        <p>If you have any questions, please contact us at <a href="mailto:axis-o@qq.com">axis-o@qq.com</a>.</p>
         <p>Thank you for shopping with AXIS O!</p>
       </div>
     </div>

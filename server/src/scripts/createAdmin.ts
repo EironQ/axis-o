@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm'
 async function createAdmin() {
   console.log('🔑 Creating admin user...')
 
-  const email = 'admin@axis-o.com'
+  const email = 'axis-o@qq.com'
   const existingAdmin = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1)
 
   if (existingAdmin.length > 0) {
@@ -32,7 +32,7 @@ async function createAdmin() {
   })
 
   console.log('✅ Admin user created')
-  console.log('   Email: admin@axis-o.com')
+  console.log('   Email: axis-o@qq.com')
   console.log('   Password: Admin@123')
   process.exit(0)
 }

@@ -57,7 +57,7 @@ export default function AdminLoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#C89460] focus:border-transparent transition-all"
-                placeholder="admin@axiso.com"
+                placeholder="axis-o@qq.com"
               />
             </div>
 
@@ -92,7 +92,7 @@ export default function AdminLoginPage() {
           </form>
 
           <p className="mt-6 text-center text-sm text-gray-500">
-            测试账号: admin@axiso.com / password
+            测试账号: axis-o@qq.com / password
           </p>
         </div>
       </div>
