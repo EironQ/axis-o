@@ -54,7 +54,7 @@ export const env = {
 
   // Email
   SENDGRID_API_KEY: process.env.SENDGRID_API_KEY || '',
-  EMAIL_FROM: process.env.EMAIL_FROM || 'axis-o@qq.com',
+  EMAIL_FROM: process.env.EMAIL_FROM || 'noreply@axiso.com',
 
   // API Base URL
   API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:3001',

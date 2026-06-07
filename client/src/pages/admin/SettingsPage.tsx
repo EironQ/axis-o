@@ -97,7 +97,7 @@ const tabConfigs: TabConfig[] = [
       { key: 'smtp_port', label: 'SMTP 端口', type: 'number', placeholder: '587' },
       { key: 'smtp_user', label: 'SMTP 用户名', type: 'text', placeholder: 'user@example.com' },
       { key: 'smtp_password', label: 'SMTP 密码', type: 'password', placeholder: '••••••••' },
-      { key: 'smtp_from_email', label: '发件人邮箱', type: 'email', placeholder: 'axis-o@qq.com' },
+      { key: 'smtp_from_email', label: '发件人邮箱', type: 'email', placeholder: 'noreply@axis-o.com' },
       { key: 'smtp_from_name', label: '发件人名称', type: 'text', placeholder: 'AXIS O' },
     ],
   },

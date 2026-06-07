@@ -10,7 +10,7 @@ const DEFAULT_SETTINGS: Record<string, { value: string; group: string; descripti
   store_name: { value: 'AXIS O', group: 'general', description: '店铺名称' },
   store_logo: { value: '', group: 'general', description: '店铺Logo URL' },
   store_favicon: { value: '', group: 'general', description: 'Favicon URL' },
-  store_email: { value: 'axis-o@qq.com', group: 'general', description: '联系邮箱' },
+  store_email: { value: 'contact@axis-o.com', group: 'general', description: '联系邮箱' },
   store_phone: { value: '', group: 'general', description: '联系电话' },
   default_language: { value: 'zh', group: 'general', description: '默认语言' },
   default_currency: { value: 'USD', group: 'general', description: '默认货币' },
