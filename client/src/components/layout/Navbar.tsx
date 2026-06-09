@@ -162,7 +162,7 @@ export default function Navbar() {
               </Link>
               <button
                 onClick={handleLogout}
-                className="text-[#3C2415]/70 hover:text-red-500 transition-colors"
+                className="hidden lg:block text-[#3C2415]/70 hover:text-red-500 transition-colors"
                 aria-label={t('nav.logout')}
               >
                 <LogOut size={18} />
