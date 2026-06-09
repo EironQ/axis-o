@@ -17,7 +17,16 @@ const statusConfig = (t: (key: string) => string): Record<string, { label: strin
   refunded: { label: t('order.status.refunded'), color: 'bg-red-100 text-red-700' },
 })
 
-const getAvailableActions = (t: (key: string) => string, status: string, hasReturnRequest?: boolean): Array<{ key: string; label: string; variant: 'primary' | 'secondary' | 'danger'; action: () => void }> => {
+const isReturnAvailable = (deliveredAt?: string): boolean => {
+  if (!deliveredAt) return true
+  const deliveredDate = new Date(deliveredAt)
+  const now = new Date()
+  const diffTime = Math.abs(now.getTime() - deliveredDate.getTime())
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+  return diffDays <= 7
+}
+
+const getAvailableActions = (t: (key: string) => string, status: string, hasReturnRequest?: boolean, deliveredAt?: string): Array<{ key: string; label: string; variant: 'primary' | 'secondary' | 'danger'; action: () => void }> => {
   const actions: Array<{ key: string; label: string; variant: 'primary' | 'secondary' | 'danger'; action: () => void }> = []
 
   switch (status) {
@@ -47,10 +56,7 @@ const getAvailableActions = (t: (key: string) => string, status: string, hasRetu
       }
       break
     case 'delivered':
-      actions.push(
-        { key: 'review', label: t('order.actions.reviewProduct'), variant: 'primary', action: () => {} }
-      )
-      if (!hasReturnRequest) {
+      if (!hasReturnRequest && isReturnAvailable(deliveredAt)) {
         actions.push(
           { key: 'return', label: t('order.actions.requestReturn'), variant: 'secondary', action: () => {} }
         )
@@ -80,6 +86,7 @@ export default function OrderDetailPage() {
   const [syncMessage, setSyncMessage] = useState<string | null>(null)
   const [returnDialogOpen, setReturnDialogOpen] = useState(false)
   const [existingReturn, setExistingReturn] = useState<ReturnRequest | null>(null)
+  const [showConfirmSuccess, setShowConfirmSuccess] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('accessToken')
@@ -194,7 +201,18 @@ export default function OrderDetailPage() {
           navigate(`/${lang}/checkout?orderId=${orderId}`)
           break
         case 'confirm':
-          setOrder({ ...order, status: 'delivered', deliveredAt: new Date().toISOString() })
+          const confirmResponse = await orderService.confirmDelivery(orderId)
+          if (confirmResponse.success) {
+            setOrder({ 
+              ...order, 
+              status: 'delivered', 
+              deliveredAt: confirmResponse.data?.deliveredAt || new Date().toISOString() 
+            })
+            setShowConfirmSuccess(true)
+            setTimeout(() => setShowConfirmSuccess(false), 5000)
+          } else {
+            setError(confirmResponse.error?.message || t('order.errors.confirmFailed'))
+          }
           break
         case 'reorder':
           navigate(`/${lang}/products`)
@@ -511,7 +529,7 @@ export default function OrderDetailPage() {
         <div className="bg-white border border-[#E5DDD3] p-6">
           <h3 className="text-sm font-medium text-[#3C2415] mb-4">{t('order.orderActions')}</h3>
           <div className="flex flex-wrap gap-3">
-            {getAvailableActions(t, order.status, order.hasReturnRequest).map((action) => (
+            {getAvailableActions(t, order.status, order.hasReturnRequest, order.deliveredAt).map((action) => (
               <button
                 key={action.key}
                 onClick={() => handleAction(action.key)}
@@ -534,6 +552,29 @@ export default function OrderDetailPage() {
           </div>
           {syncMessage && (
             <p className="mt-3 text-sm text-[#C89460]">{syncMessage}</p>
+          )}
+          {showConfirmSuccess && (
+            <div className="mt-4 bg-green-50 border border-green-200 p-4 rounded-lg animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-green-800">{t('order.success.confirmTitle')}</h4>
+                  <p className="text-sm text-green-600">{t('order.success.confirmMessage')}</p>
+                </div>
+              </div>
+            </div>
+          )}
+          {order.status === 'delivered' && !isReturnAvailable(order.deliveredAt) && (
+            <div className="mt-4">
+              <p className="text-sm text-gray-500">{t('order.returnExpired')}</p>
+              <p className="text-sm text-[#C89460] mt-1">
+                <Link to={`/${lang}/return-policy`} className="hover:underline">{t('order.viewReturnPolicy')}</Link>
+              </p>
+            </div>
           )}
         </div>
       </div>

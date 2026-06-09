@@ -326,16 +326,21 @@
       "retry": "Retry",
       "networkError": "Network error, please try again later",
       "operationFailed": "Operation failed, please try again later",
-      "cancelFailed": "Cancellation failed"
+      "cancelFailed": "Cancellation failed",
+      "confirmFailed": "Failed to confirm receipt"
     },
     "success": {
-      "orderCancelled": "Order cancelled"
+      "orderCancelled": "Order cancelled",
+      "confirmTitle": "Delivery Confirmed",
+      "confirmMessage": "Thank you for shopping at AXIS O! We look forward to serving you again."
     },
     "loadOrdersFailed": "Failed to load orders",
     "loadingOrders": "Loading orders...",
-    "confirmCancel": "Confirm Cancel"
+    "confirmCancel": "Confirm Cancel",
+    "returnExpired": "This order has been delivered for more than 7 days and is no longer eligible for return",
+    "viewReturnPolicy": "View return policy"
   },
-  "profile": {
+  "product": {
     "title": "My Account",
     "menu": {
       "profile": "Profile",

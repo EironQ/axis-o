@@ -11,6 +11,7 @@ import {
   Trash2,
   PackageOpen,
   ChevronRight,
+  RefreshCw,
 } from 'lucide-react'
 import { orderService, Order } from '@/services/order'
 import { useSettings } from '@/context/SettingsContext'
@@ -31,6 +32,15 @@ const formatPrice = (price: number) => {
   return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
 }
 
+const isReturnAvailable = (deliveredAt?: string): boolean => {
+  if (!deliveredAt) return true
+  const deliveredDate = new Date(deliveredAt)
+  const now = new Date()
+  const diffTime = Math.abs(now.getTime() - deliveredDate.getTime())
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+  return diffDays <= 7
+}
+
 export default function OrderListPage() {
   const navigate = useNavigate()
   const { lang } = useLanguage()
@@ -39,6 +49,7 @@ export default function OrderListPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [orderToCancel, setOrderToCancel] = useState<Order | null>(null)
 
@@ -84,6 +95,25 @@ export default function OrderListPage() {
       setMessage({ type: 'error', text: t('order.errors.networkError') })
     } finally {
       setCancellingId(null)
+    }
+  }
+
+  const handleConfirmDelivery = async (orderId: string) => {
+    setConfirmingId(orderId)
+    setMessage(null)
+
+    try {
+      const response = await orderService.confirmDelivery(orderId)
+      if (response.success) {
+        setOrders(orders.map((o) => (o.id === orderId ? { ...o, status: 'delivered' as const, deliveredAt: new Date().toISOString() } : o)))
+        setMessage({ type: 'success', text: t('order.success.confirmTitle') })
+      } else {
+        setMessage({ type: 'error', text: response.error?.message || t('order.errors.confirmFailed') })
+      }
+    } catch {
+      setMessage({ type: 'error', text: t('order.errors.networkError') })
+    } finally {
+      setConfirmingId(null)
     }
   }
 
@@ -140,19 +170,25 @@ export default function OrderListPage() {
       <div className="mx-auto max-w-[1200px] px-4 md:px-8 py-6 md:py-12">
         <div className="max-w-[960px] mx-auto">
           {message && (
-            <div
-              className={`mb-6 p-4 flex items-center gap-3 text-sm ${
-                message.type === 'success'
-                  ? 'bg-green-50 border border-green-200 text-green-700'
-                  : 'bg-red-50 border border-red-200 text-red-700'
-              }`}
-            >
+            <div className={`mb-6 ${message.type === 'success' ? 'bg-green-50 border border-green-200 p-4 rounded-lg animate-pulse' : 'bg-red-50 border border-red-200 p-4 flex items-center gap-3 text-sm'}`}>
               {message.type === 'success' ? (
-                <CheckCircle size={18} className="text-green-600 shrink-0" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-green-800">{message.text}</h4>
+                    <p className="text-sm text-green-600">{t('order.success.confirmMessage')}</p>
+                  </div>
+                </div>
               ) : (
-                <AlertCircle size={18} className="text-red-600 shrink-0" />
+                <>
+                  <AlertCircle size={18} className="text-red-600 shrink-0" />
+                  {message.text}
+                </>
               )}
-              {message.text}
             </div>
           )}
 
@@ -244,10 +280,28 @@ export default function OrderListPage() {
                     )}
 
                     {order.status === 'shipped' && (
-                      <button className="px-4 py-2 text-sm border border-[#E5DDD3] text-[#3C2415] hover:bg-[#FAF7F2] transition-colors flex items-center gap-2">
+                      <button
+                        onClick={() => handleConfirmDelivery(order.id)}
+                        disabled={confirmingId === order.id}
+                        className="px-4 py-2 text-sm border border-[#E5DDD3] text-[#3C2415] hover:bg-[#FAF7F2] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
                         <Truck size={14} />
-                        {t('order.actions.confirmReceipt')}
+                        {confirmingId === order.id ? t('order.processing') : t('order.actions.confirmReceipt')}
                       </button>
+                    )}
+
+                    {order.status === 'delivered' && isReturnAvailable(order.deliveredAt) && !order.hasReturnRequest && (
+                      <Link
+                        to={`/${lang}/returns/create/${order.id}`}
+                        className="px-4 py-2 text-sm border border-[#E5DDD3] text-[#3C2415] hover:bg-[#FAF7F2] transition-colors flex items-center gap-2"
+                      >
+                        <RefreshCw size={14} />
+                        {t('order.actions.requestReturn')}
+                      </Link>
+                    )}
+
+                    {order.status === 'delivered' && !isReturnAvailable(order.deliveredAt) && (
+                      <span className="px-4 py-2 text-sm text-gray-500">{t('order.returnExpired')}</span>
                     )}
                   </div>
                 </div>

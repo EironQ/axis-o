@@ -326,14 +326,19 @@
       "retry": "重试",
       "networkError": "网络错误，请稍后重试",
       "operationFailed": "操作失败，请稍后重试",
-      "cancelFailed": "取消失败"
+      "cancelFailed": "取消失败",
+      "confirmFailed": "确认收货失败"
     },
     "success": {
-      "orderCancelled": "订单已取消"
+      "orderCancelled": "订单已取消",
+      "confirmTitle": "收货确认成功",
+      "confirmMessage": "感谢您购买 AXIS O 产品！期待您的下次光临。"
     },
     "loadOrdersFailed": "加载订单失败",
     "loadingOrders": "加载订单中...",
-    "confirmCancel": "确认取消"
+    "confirmCancel": "确认取消",
+    "returnExpired": "当前订单已签收超过7天，不再支持退换货",
+    "viewReturnPolicy": "查看退换货政策"
   },
   "profile": {
     "title": "我的账户",

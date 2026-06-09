@@ -255,4 +255,23 @@ export const orderService = {
     })
     return res.json()
   },
+
+  confirmDelivery: async (orderId: string): Promise<ApiResponse<{ orderId: string; status: string; deliveredAt: string }>> => {
+    if (USE_MOCK) {
+      const order = mockOrders.find((o) => o.id === orderId)
+      if (!order) {
+        return { success: false, error: { code: 'NOT_FOUND', message: 'Order not found' } }
+      }
+      if (order.status !== 'shipped') {
+        return { success: false, error: { code: 'INVALID_STATUS', message: 'Cannot confirm delivery for this order' } }
+      }
+      order.status = 'delivered'
+      order.updatedAt = new Date().toISOString()
+      return { success: true, data: { orderId, status: 'delivered', deliveredAt: new Date().toISOString() } }
+    }
+    const res = await fetchWithAuth(`${API_BASE_URL}/orders/${orderId}/confirm-delivery`, {
+      method: 'PUT',
+    })
+    return res.json()
+  },
 }

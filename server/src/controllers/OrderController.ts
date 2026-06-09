@@ -382,6 +382,39 @@ export const OrderController = {
     }
   },
 
+  confirmDelivery: async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.userId
+      const orderId = req.params.id as string
+
+      const orderResult = await db
+        .select({ status: orders.status })
+        .from(orders)
+        .where(and(eq(orders.id, orderId), eq(orders.userId, userId)))
+        .limit(1)
+
+      if (orderResult.length === 0) {
+        res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Order not found' } })
+        return
+      }
+
+      const order = orderResult[0]
+      if (order.status !== 'shipped') {
+        res.status(400).json({ success: false, error: { code: 'INVALID_STATUS', message: `Cannot confirm delivery for order with status: ${order.status}` } })
+        return
+      }
+
+      await db.update(orders)
+        .set({ status: 'delivered', deliveredAt: new Date(), updatedAt: new Date() })
+        .where(eq(orders.id, orderId))
+
+      res.json({ success: true, data: { orderId, status: 'delivered', deliveredAt: new Date().toISOString() } })
+    } catch (error) {
+      console.error('Confirm delivery error:', error)
+      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to confirm delivery' } })
+    }
+  },
+
   adminList: async (req: Request, res: Response) => {
     try {
       const page = parseInt(req.query.page as string) || 1
