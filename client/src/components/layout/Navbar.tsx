@@ -206,6 +206,15 @@ export default function Navbar() {
                 {t(link.key as any)}
               </Link>
             ))}
+            {isLoggedIn && (
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 text-sm tracking-widest uppercase text-[#3C2415]/70 hover:text-red-500 transition-colors"
+              >
+                <LogOut size={16} />
+                {t('nav.logout')}
+              </button>
+            )}
           </div>
         </div>
       )}
