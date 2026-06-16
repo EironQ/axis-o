@@ -29,6 +29,13 @@
       "when": 1780288696103,
       "tag": "0003_lumpy_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1781608800000,
+      "tag": "0004_add_lianlianpay",
+      "breakpoints": true
     }
   ]
 }

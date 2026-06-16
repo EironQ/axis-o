@@ -256,7 +256,7 @@ export default function CheckoutPage() {
       if (existingOrderId && orderResult) {
         try {
           const paymentResponse = await paymentApi.createIntent(orderResult.orderId, paymentProvider)
-          if (paymentResponse.success && (paymentResponse.data?.clientSecret || paymentResponse.data?.paypalOrderId || paymentResponse.data?.airwallexRedirectUrl)) {
+          if (paymentResponse.success && (paymentResponse.data?.clientSecret || paymentResponse.data?.paypalOrderId || paymentResponse.data?.airwallexRedirectUrl || paymentResponse.data?.lianlianpayRedirectUrl)) {
             if (paymentResponse.data?.alreadyPaid) {
               setCheckoutPhase('success')
               setIsSubmitting(false)
@@ -490,6 +490,17 @@ export default function CheckoutPage() {
                   onError={handlePaymentError}
                   onCancel={handlePaymentCancel}
                 />
+              ) : paymentData.lianlianpayRedirectUrl ? (
+                <AirwallexPaymentForm
+                  redirectUrl={paymentData.lianlianpayRedirectUrl}
+                  orderId={paymentData.orderId}
+                  orderNumber={orderResult.orderNumber}
+                  amount={paymentData.amount || orderResult.total}
+                  currency={paymentData.currency || orderResult.currency}
+                  onSuccess={handlePaymentSuccess}
+                  onError={handlePaymentError}
+                  onCancel={handlePaymentCancel}
+                />
               ) : paymentData.paypalOrderId ? (
                 <PayPalPaymentForm
                   clientId={paymentData.publishableKey}
@@ -535,7 +546,7 @@ export default function CheckoutPage() {
                   onClick={async () => {
                     try {
                       const paymentResponse = await paymentApi.createIntent(orderResult.orderId, paymentProvider)
-                      if (paymentResponse.success && (paymentResponse.data?.clientSecret || paymentResponse.data?.paypalOrderId || paymentResponse.data?.airwallexRedirectUrl)) {
+                      if (paymentResponse.success && (paymentResponse.data?.clientSecret || paymentResponse.data?.paypalOrderId || paymentResponse.data?.airwallexRedirectUrl || paymentResponse.data?.lianlianpayRedirectUrl)) {
                         if (paymentResponse.data?.alreadyPaid) {
                           setCheckoutPhase('success')
                           return

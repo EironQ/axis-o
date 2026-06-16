@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from '../utils/uuid'
 import { StripeService, getStripePublishableKey } from '../services/payment/stripe'
 import { PayPalService, getPayPalClientId } from '../services/payment/paypal'
 import { AirwallexService } from '../services/payment/airwallex'
+import { LianlianpayService } from '../services/payment/lianlianpay'
 import { OrderEmailHelper } from '../services/orderEmailHelper'
 import { getCachedSetting, getSetting } from '../services/settingsCache'
 
@@ -15,7 +16,7 @@ interface EventLogParams {
   paymentId: string
   orderId: string
   eventType: EventType
-  provider: 'stripe' | 'paypal' | 'airwallex'
+  provider: 'stripe' | 'paypal' | 'airwallex' | 'lianlianpay'
   providerEventId?: string | null
   amount?: string
   currency?: string
@@ -359,6 +360,70 @@ export const PaymentController = {
             error: {
               code: 'PAYPAL_ERROR',
               message: paypalError?.message || 'PayPal支付服务暂时不可用，请稍后重试',
+            },
+          })
+          return
+        }
+      }
+
+      if (provider === 'lianlianpay') {
+        try {
+          const lianlianpayResult = await LianlianpayService.createPayment({
+            orderId,
+            orderNumber: order.orderNumber,
+            amount: parseFloat(order.total.toString()),
+            currency: order.currency,
+            description: `AXIS O - Order #${order.orderNumber}`,
+          })
+
+          const paymentData = {
+            id: paymentId,
+            orderId,
+            provider: 'lianlianpay' as const,
+            transactionId: lianlianpayResult.paymentId,
+            status: 'pending' as const,
+            amount: order.total,
+            currency: order.currency,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }
+
+          await db.insert(payments).values(paymentData)
+
+          await insertPaymentEvent({
+            paymentId,
+            orderId,
+            eventType: 'intent_created',
+            provider: 'lianlianpay',
+            providerEventId: lianlianpayResult.paymentId,
+            amount: order.total,
+            currency: order.currency,
+            statusAfter: 'pending',
+            notes: `Lianlianpay payment created for order #${order.orderNumber}`,
+          })
+
+          res.json({
+            success: true,
+            data: {
+              paymentId,
+              orderId,
+              orderNumber: order.orderNumber,
+              amount: parseFloat(order.total.toString()),
+              currency: order.currency,
+              publishableKey: '',
+              clientSecret: '',
+              paypalOrderId: '',
+              lianlianpayRedirectUrl: lianlianpayResult.redirectUrl,
+            },
+          })
+          return
+        } catch (lianlianpayError: any) {
+          console.error('Lianlianpay payment error:', lianlianpayError)
+          res.status(500).json({
+            success: false,
+            error: {
+              code: 'LIANLIANPAY_ERROR',
+              message: lianlianpayError?.message || '连连支付服务暂时不可用，请稍后重试',
             },
           })
           return

@@ -1,5 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
-const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 import { products } from '@/data/products'
 
@@ -685,6 +685,7 @@ export interface PaymentIntentResponse {
     clientSecret: string
     paypalOrderId?: string
     airwallexRedirectUrl?: string
+    lianlianpayRedirectUrl?: string
     alreadyPaid?: boolean
   }
 }

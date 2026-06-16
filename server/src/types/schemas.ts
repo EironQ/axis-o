@@ -32,7 +32,7 @@ export const createOrderSchema = z.object({
   shippingAddressId: z.string().min(1),
   billingAddressId: z.string().min(1),
   shippingMethod: z.string().min(1),
-  paymentProvider: z.enum(['stripe', 'paypal', 'airwallex']),
+  paymentProvider: z.enum(['stripe', 'paypal', 'airwallex', 'lianlianpay']),
   discountCode: z.string().optional(),
   notes: z.string().optional(),
   currency: z.string().length(3).default('USD'),
