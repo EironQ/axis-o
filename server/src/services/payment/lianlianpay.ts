@@ -2,11 +2,9 @@ import { env } from '../../config/env'
 import { getCachedSetting, getSetting } from '../settingsCache'
 
 function getLianlianpayDomain(): string {
-  const mode = getCachedSetting('lianlianpay_mode') || 'sandbox'
-  if (mode === 'live' || mode === 'production') {
-    return 'https://api.lianlianpay.com'
-  }
-  return 'https://api-sandbox.lianlianpay.com'
+  // 连连支付沙箱域名已下线，统一使用生产域名
+  // 测试环境通过测试商户号区分，不依赖独立域名
+  return 'https://api.lianlianpay.com'
 }
 
 async function resolveMerchantId(): Promise<string> {
