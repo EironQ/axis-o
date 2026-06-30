@@ -806,13 +806,16 @@ export default function CheckoutPage() {
                   ].map((provider) => (
                     <label
                       key={provider.value}
-                      className={`flex flex-col items-center justify-center p-4 border rounded-lg cursor-pointer transition-all ${
+                      className={`flex items-center justify-center p-3 rounded-lg cursor-pointer transition-all ${
                         paymentProvider === provider.value
-                          ? 'border-[#C89460] bg-[#FFF9F5]'
-                          : 'border-[#3C2415]/10 hover:border-[#3C2415]/30'
+                          ? 'bg-[#FFC439]'
+                          : 'bg-[#FFC439]/80 hover:bg-[#FFC439]'
                       }`}
                     >
-                      <provider.Icon size={24} className="text-[#3C2415] mb-2" />
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#003087] font-bold text-lg">Pay</span>
+                        <span className="text-[#009BE1] font-bold text-lg">Pal</span>
+                      </div>
                       <input
                         type="radio"
                         name="paymentProvider"
@@ -821,7 +824,6 @@ export default function CheckoutPage() {
                         onChange={(e) => setPaymentProvider(e.target.value as 'paypal' | 'lianlianpay')}
                         className="sr-only"
                       />
-                      <span className="text-xs text-[#3C2415]">{provider.label}</span>
                     </label>
                   ))}
                 </div>
