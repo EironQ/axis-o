@@ -114,8 +114,11 @@ export default function OrderDetailPage() {
             setTimeout(() => setSyncMessage(null), 3000)
             return true
           }
+        } else if (syncResult.data?.message) {
+          setSyncMessage(syncResult.data.message)
+          setTimeout(() => setSyncMessage(null), 5000)
         } else {
-          setSyncMessage(syncResult.data?.message || t('order.syncFailed'))
+          setSyncMessage(t('order.syncFailed'))
           setTimeout(() => setSyncMessage(null), 5000)
         }
       } else {

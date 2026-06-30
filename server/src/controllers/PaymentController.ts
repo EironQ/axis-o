@@ -777,7 +777,7 @@ export const PaymentController = {
       const order = orderResult[0]
 
       const paymentResult = await db
-        .select({ id: payments.id, status: payments.status, provider: payments.provider })
+        .select({ id: payments.id, status: payments.status, provider: payments.provider, transactionId: payments.transactionId })
         .from(payments)
         .where(eq(payments.orderId, orderId))
         .limit(1)
@@ -787,13 +787,85 @@ export const PaymentController = {
         return
       }
 
+      const payment = paymentResult[0]
+      let newStatus = order.status
+      let newPaymentStatus = payment.status
+      let message = ''
+
+      if (payment.provider === 'paypal' && payment.transactionId) {
+        try {
+          const paypalOrder = await PayPalService.getOrder(payment.transactionId)
+          if (paypalOrder.status === 'COMPLETED') {
+            if (payment.status !== 'succeeded' || order.status !== 'paid') {
+              await db.transaction(async (tx) => {
+                await tx
+                  .update(payments)
+                  .set({ status: 'succeeded', updatedAt: new Date() })
+                  .where(eq(payments.id, payment.id))
+
+                await tx
+                  .update(orders)
+                  .set({ status: 'paid', paidAt: new Date(), updatedAt: new Date() })
+                  .where(eq(orders.id, orderId))
+
+                await tx.insert(paymentEvents).values({
+                  id: uuidv4(),
+                  paymentId: payment.id,
+                  orderId,
+                  eventType: 'status_synced',
+                  provider: 'paypal',
+                  providerEventId: paypalOrder.id,
+                  statusBefore: payment.status,
+                  statusAfter: 'succeeded',
+                  rawData: JSON.stringify(paypalOrder),
+                  notes: 'Payment status synced from PayPal',
+                  createdAt: new Date(),
+                })
+              })
+              newStatus = 'paid'
+              newPaymentStatus = 'succeeded'
+              message = 'Payment status updated to paid'
+            }
+          } else if (paypalOrder.status === 'CANCELLED') {
+            if (payment.status !== 'failed' || order.status !== 'cancelled') {
+              await db.transaction(async (tx) => {
+                await tx
+                  .update(payments)
+                  .set({ status: 'failed', updatedAt: new Date() })
+                  .where(eq(payments.id, payment.id))
+
+                await tx.insert(paymentEvents).values({
+                  id: uuidv4(),
+                  paymentId: payment.id,
+                  orderId,
+                  eventType: 'status_synced',
+                  provider: 'paypal',
+                  providerEventId: paypalOrder.id,
+                  statusBefore: payment.status,
+                  statusAfter: 'failed',
+                  rawData: JSON.stringify(paypalOrder),
+                  notes: 'Payment cancelled',
+                  createdAt: new Date(),
+                })
+              })
+              newPaymentStatus = 'failed'
+              message = 'Payment was cancelled'
+            }
+          }
+        } catch (paypalError) {
+          console.error('Failed to sync PayPal status:', paypalError)
+          message = 'Failed to sync with PayPal'
+        }
+      }
+
       res.json({
         success: true,
         data: {
           orderId,
-          status: order.status,
-          paymentStatus: paymentResult[0].status,
-          provider: paymentResult[0].provider,
+          status: newStatus,
+          paymentStatus: newPaymentStatus,
+          provider: payment.provider,
+          message,
         },
       })
     } catch (error) {
