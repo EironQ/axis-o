@@ -228,7 +228,7 @@ export default function CheckoutPage() {
 
   const shippingMethods = [
     { value: 'standard', label: t('checkout.standard'), desc: t('checkout.standardDesc'), price: baseShippingCost },
-    { value: 'express', label: t('checkout.express'), desc: t('checkout.expressDesc'), price: baseShippingCost + expediteFee },
+    { value: 'express', label: t('checkout.express'), desc: t('checkout.expressDesc'), price: expressFee },
   ]
 
   const selectedMethod = shippingMethods.find(m => m.value === shippingMethod)
@@ -908,7 +908,7 @@ export default function CheckoutPage() {
                         <span className="text-[#3C2415]">{formatPrice(expediteFee)}</span>
                       </div>
                     )}
-                    {baseShippingCost > 0 && (
+                    {shippingMethod === 'standard' && baseShippingCost > 0 && (
                       <div className="flex justify-between text-sm">
                         <span className="text-[#3C2415]/60">{t('cart.shipping')}</span>
                         <span className="text-[#3C2415]">{formatPrice(baseShippingCost)}</span>

@@ -291,7 +291,7 @@ export const OrderController = {
         return isNaN(val) ? 200 : val
       })()
       const baseShipping = subtotal >= freeThreshold ? 0 : baseShippingFee
-      const shippingCost = shippingMethod === 'express' ? baseShipping + expressExtraFee : baseShipping
+      const shippingCost = shippingMethod === 'express' ? expressExtraFee : baseShipping
       const taxAmount = 0
       let total = subtotal + shippingCost - discountAmount
       total = parseFloat(total.toFixed(2))
