@@ -825,6 +825,8 @@ export const PaymentController = {
               newStatus = 'paid'
               newPaymentStatus = 'succeeded'
               message = 'Payment status updated to paid'
+            } else {
+              message = 'Payment is already paid'
             }
           } else if (paypalOrder.status === 'CANCELLED') {
             if (payment.status !== 'failed' || order.status !== 'cancelled') {
@@ -850,12 +852,21 @@ export const PaymentController = {
               })
               newPaymentStatus = 'failed'
               message = 'Payment was cancelled'
+            } else {
+              message = 'Payment is already cancelled'
             }
+          } else {
+            message = `Payment is still ${paypalOrder.status.toLowerCase()}`
           }
         } catch (paypalError) {
           console.error('Failed to sync PayPal status:', paypalError)
-          message = 'Failed to sync with PayPal'
+          const errorMsg = paypalError instanceof Error ? paypalError.message : 'Unknown error'
+          message = `Sync failed: ${errorMsg}`
         }
+      } else if (!payment.transactionId) {
+        message = 'No PayPal transaction ID found'
+      } else {
+        message = 'Unsupported payment provider for sync'
       }
 
       res.json({
