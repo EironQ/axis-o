@@ -420,7 +420,7 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-[#3C2415]/60">{t('checkout.amount')}</span>
-                <span className="text-sm font-medium text-[#3C2415]">{formatPrice(orderResult.total)}</span>
+                <span className="text-sm font-medium text-[#3C2415]">{formatPrice(orderTotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-[#3C2415]/60">{t('checkout.status')}</span>
@@ -511,7 +511,7 @@ export default function CheckoutPage() {
                   redirectUrl={paymentData.lianlianpayRedirectUrl}
                   orderId={paymentData.orderId}
                   orderNumber={orderResult.orderNumber}
-                  amount={paymentData.amount || orderResult.total}
+                  amount={paymentData.amount || orderTotal}
                   currency={paymentData.currency || orderResult.currency}
                   onSuccess={handlePaymentSuccess}
                   onError={handlePaymentError}
@@ -524,7 +524,7 @@ export default function CheckoutPage() {
                   paypalOrderId={paymentData.paypalOrderId}
                   orderId={paymentData.orderId}
                   orderNumber={orderResult.orderNumber}
-                  amount={paymentData.amount || orderResult.total}
+                  amount={paymentData.amount || orderTotal}
                   currency={paymentData.currency || orderResult.currency}
                   onSuccess={handlePaymentSuccess}
                   onError={handlePaymentError}
@@ -917,7 +917,7 @@ export default function CheckoutPage() {
                     <div className="border-t border-[#3C2415]/10 pt-3 flex justify-between">
                       <span className="text-sm font-medium text-[#3C2415]">{t('cart.total')}</span>
                       <span className="text-lg font-medium text-[#3C2415]">
-                        {existingOrderId && orderResult ? formatPrice(orderResult.total) : formatPrice(orderTotal)}
+                        {formatPrice(orderTotal)}
                       </span>
                     </div>
                   </div>
@@ -964,7 +964,7 @@ export default function CheckoutPage() {
                     className="w-full mt-6"
                     disabled={isSubmitting || addresses.length === 0 || !selectedShippingAddress || !selectedBillingAddress || !addresses.some(addr => addr.id === selectedShippingAddress) || !addresses.some(addr => addr.id === selectedBillingAddress)}
                   >
-                    {isSubmitting ? t('payment.processingBtn') : addresses.length === 0 ? t('checkout.addAddressFirst') : !selectedShippingAddress ? t('checkout.selectShippingAddress') : !selectedBillingAddress ? t('checkout.selectBillingAddress') : (existingOrderId && orderResult ? `${t('payment.confirmPay', { amount: formatPrice(orderResult.total) })}` : `${t('checkout.placeOrder')} ${formatPrice(orderTotal)}`)}
+                    {isSubmitting ? t('payment.processingBtn') : addresses.length === 0 ? t('checkout.addAddressFirst') : !selectedShippingAddress ? t('checkout.selectShippingAddress') : !selectedBillingAddress ? t('checkout.selectBillingAddress') : `${t('payment.confirmPay', { amount: formatPrice(orderTotal) })}`}
                   </Button>
                 </div>
               </div>
