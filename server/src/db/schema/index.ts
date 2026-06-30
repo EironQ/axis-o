@@ -183,7 +183,7 @@ export const orderItems = mysqlTable('order_items', {
 export const payments = mysqlTable('payments', {
   id: varchar('id', { length: 36 }).primaryKey(),
   orderId: varchar('order_id', { length: 36 }).notNull().references(() => orders.id, { onDelete: 'cascade' }),
-  provider: mysqlEnum('provider', ['stripe', 'paypal', 'airwallex', 'lianlianpay']).notNull(),
+  provider: mysqlEnum('provider', ['paypal', 'lianlianpay']).notNull(),
   transactionId: varchar('transaction_id', { length: 255 }),
   status: mysqlEnum('status', ['pending', 'processing', 'succeeded', 'failed', 'refunded', 'partially_refunded']).notNull().default('pending'),
   amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
@@ -203,7 +203,7 @@ export const paymentEvents = mysqlTable('payment_events', {
   paymentId: varchar('payment_id', { length: 36 }).notNull().references(() => payments.id, { onDelete: 'cascade' }),
   orderId: varchar('order_id', { length: 36 }).notNull().references(() => orders.id, { onDelete: 'cascade' }),
   eventType: mysqlEnum('event_type', ['intent_created', 'intent_succeeded', 'intent_failed', 'intent_canceled', 'refund_requested', 'refund_succeeded', 'refund_failed', 'status_synced', 'webhook_received']).notNull(),
-  provider: mysqlEnum('provider', ['stripe', 'paypal', 'airwallex', 'lianlianpay']).notNull(),
+  provider: mysqlEnum('provider', ['paypal', 'lianlianpay']).notNull(),
   providerEventId: varchar('provider_event_id', { length: 255 }),
   amount: decimal('amount', { precision: 10, scale: 2 }),
   currency: varchar('currency', { length: 5 }),

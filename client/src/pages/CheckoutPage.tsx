@@ -1,14 +1,13 @@
 import { useState, useEffect, Component } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, MapPin, CreditCard, Truck, Gift, Globe, Wallet } from 'lucide-react'
+import { ArrowLeft, MapPin, CreditCard, Truck, Gift, Globe } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 import { useSettings } from '@/context/SettingsContext'
 import { useTranslation, useLanguage } from '@/i18n'
 import { orderApi, addressApi, paymentApi, CreateOrderRequest, UserAddress, PaymentIntentResponse } from '@/services/api'
 import Button from '@/components/ui/Button'
-import StripePaymentForm from '@/components/checkout/StripePaymentForm'
 import PayPalPaymentForm from '@/components/checkout/PayPalPaymentForm'
-import AirwallexPaymentForm from '@/components/checkout/AirwallexPaymentForm'
+import RedirectPaymentForm from '@/components/checkout/RedirectPaymentForm'
 
 class CheckoutErrorBoundary extends Component<
   { children: React.ReactNode; onBack: () => void; onRetry?: () => void; t: (key: string, params?: Record<string, string | number>) => string },
@@ -63,7 +62,7 @@ export default function CheckoutPage() {
   const [selectedShippingAddress, setSelectedShippingAddress] = useState<string>('')
   const [selectedBillingAddress, setSelectedBillingAddress] = useState<string>('')
   const [shippingMethod, setShippingMethod] = useState<string>('standard')
-  const [paymentProvider, setPaymentProvider] = useState<'paypal' | 'airwallex' | 'lianlianpay'>('paypal')
+  const [paymentProvider, setPaymentProvider] = useState<'paypal' | 'lianlianpay'>('paypal')
   const [discountCode, setDiscountCode] = useState<string>('')
   const [notes, setNotes] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -119,8 +118,10 @@ export default function CheckoutPage() {
         orderId: order.id,
         orderNumber: order.orderNumber,
         total: Number(order.total || 0),
+        subtotal: Number(order.subtotal || 0),
         currency: order.currency || 'USD',
         status: order.status,
+        shippingMethod: order.shippingMethod || 'standard',
       }
       setOrderResult(orderInfo)
 
@@ -134,6 +135,10 @@ export default function CheckoutPage() {
           setSelectedShippingAddress(matchingAddress.id)
           setSelectedBillingAddress(matchingAddress.id)
         }
+      }
+
+      if (order.shippingMethod) {
+        setShippingMethod(order.shippingMethod)
       }
 
       if (order.status === 'paid' || order.status === 'processing' || order.status === 'delivered') {
@@ -201,21 +206,43 @@ export default function CheckoutPage() {
     }
   }
 
-  const shippingMethods = [
-    { value: 'standard', label: t('checkout.standard'), desc: t('checkout.standardDesc'), price: 0 },
-    { value: 'express', label: t('checkout.express'), desc: t('checkout.expressDesc'), price: (() => { const val = parseFloat(store.shipping_fee); return isNaN(val) ? 50 : val })() },
-  ]
+  const freeThreshold = (() => {
+    const val = parseFloat(store.free_shipping_threshold)
+    return isNaN(val) ? 200 : val
+  })()
+  const shippingFee = (() => {
+    const val = parseFloat(store.shipping_fee)
+    return isNaN(val) ? 50 : val
+  })()
+  const expressFee = (() => {
+    const val = parseFloat(store.express_shipping_fee)
+    return isNaN(val) ? 50 : val
+  })()
 
   const validItems = items.filter(item => item.quantity > 0)
-  const validTotalPrice = validItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const cartTotalPrice = validItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const effectiveSubtotal = existingOrderId && orderResult ? orderResult.subtotal : cartTotalPrice
+
+  const baseShippingCost = effectiveSubtotal >= freeThreshold ? 0 : shippingFee
+  const expediteFee = expressFee
+
+  const shippingMethods = [
+    { value: 'standard', label: t('checkout.standard'), desc: t('checkout.standardDesc'), price: baseShippingCost },
+    { value: 'express', label: t('checkout.express'), desc: t('checkout.expressDesc'), price: baseShippingCost + expediteFee },
+  ]
+
   const selectedMethod = shippingMethods.find(m => m.value === shippingMethod)
-  const shippingCost = selectedMethod?.price ?? 50
+  const shippingCost = selectedMethod?.price ?? 0
   const taxAmount = 0
-  const orderTotal = parseFloat((validTotalPrice + shippingCost).toFixed(2))
+  const orderTotal = parseFloat((effectiveSubtotal + shippingCost).toFixed(2))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isSubmitting) return
+    if (cartLoading) {
+      setError(t('checkout.loadingCart'))
+      return
+    }
     setIsSubmitting(true)
     setError(null)
     setSubmitAttempted(true)
@@ -256,7 +283,7 @@ export default function CheckoutPage() {
       if (existingOrderId && orderResult) {
         try {
           const paymentResponse = await paymentApi.createIntent(orderResult.orderId, paymentProvider)
-          if (paymentResponse.success && (paymentResponse.data?.clientSecret || paymentResponse.data?.paypalOrderId || paymentResponse.data?.airwallexRedirectUrl || paymentResponse.data?.lianlianpayRedirectUrl)) {
+          if (paymentResponse.success && (paymentResponse.data?.paypalOrderId || paymentResponse.data?.lianlianpayRedirectUrl)) {
             if (paymentResponse.data?.alreadyPaid) {
               setCheckoutPhase('success')
               setIsSubmitting(false)
@@ -479,19 +506,8 @@ export default function CheckoutPage() {
                 setPaymentData(null)
                 setError(null)
             }}>
-              {paymentData.airwallexRedirectUrl ? (
-                <AirwallexPaymentForm
-                  redirectUrl={paymentData.airwallexRedirectUrl}
-                  orderId={paymentData.orderId}
-                  orderNumber={orderResult.orderNumber}
-                  amount={paymentData.amount || orderResult.total}
-                  currency={paymentData.currency || orderResult.currency}
-                  onSuccess={handlePaymentSuccess}
-                  onError={handlePaymentError}
-                  onCancel={handlePaymentCancel}
-                />
-              ) : paymentData.lianlianpayRedirectUrl ? (
-                <AirwallexPaymentForm
+              {paymentData.lianlianpayRedirectUrl ? (
+                <RedirectPaymentForm
                   redirectUrl={paymentData.lianlianpayRedirectUrl}
                   orderId={paymentData.orderId}
                   orderNumber={orderResult.orderNumber}
@@ -500,6 +516,7 @@ export default function CheckoutPage() {
                   onSuccess={handlePaymentSuccess}
                   onError={handlePaymentError}
                   onCancel={handlePaymentCancel}
+                  provider="lianlianpay"
                 />
               ) : paymentData.paypalOrderId ? (
                 <PayPalPaymentForm
@@ -514,17 +531,9 @@ export default function CheckoutPage() {
                   onCancel={handlePaymentCancel}
                 />
               ) : (
-                <StripePaymentForm
-                  clientSecret={paymentData.clientSecret}
-                  publishableKey={paymentData.publishableKey}
-                  orderId={paymentData.orderId}
-                  orderNumber={orderResult.orderNumber}
-                  amount={paymentData.amount || orderResult.total}
-                  currency={paymentData.currency || orderResult.currency}
-                  onSuccess={handlePaymentSuccess}
-                  onError={handlePaymentError}
-                  onCancel={handlePaymentCancel}
-                />
+                <div className="text-center text-[#3C2415]/60 py-8">
+                  <p>Payment method not available</p>
+                </div>
               )}
             </CheckoutErrorBoundary>
           ) : (
@@ -546,7 +555,7 @@ export default function CheckoutPage() {
                   onClick={async () => {
                     try {
                       const paymentResponse = await paymentApi.createIntent(orderResult.orderId, paymentProvider)
-                      if (paymentResponse.success && (paymentResponse.data?.clientSecret || paymentResponse.data?.paypalOrderId || paymentResponse.data?.airwallexRedirectUrl || paymentResponse.data?.lianlianpayRedirectUrl)) {
+                      if (paymentResponse.success && (paymentResponse.data?.paypalOrderId || paymentResponse.data?.lianlianpayRedirectUrl)) {
                         if (paymentResponse.data?.alreadyPaid) {
                           setCheckoutPhase('success')
                           return
@@ -791,11 +800,9 @@ export default function CheckoutPage() {
                   {t('checkout.paymentMethod')}
                 </h3>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   {[
-                    { value: 'paypal', label: 'PayPal', Icon: Globe },
-                    { value: 'airwallex', label: 'Airwallex', Icon: Wallet },
-                    { value: 'lianlianpay', label: 'Lianlianpay', Icon: CreditCard },
+                    { value: 'paypal' as const, label: 'PayPal', Icon: Globe },
                   ].map((provider) => (
                     <label
                       key={provider.value}
@@ -811,7 +818,7 @@ export default function CheckoutPage() {
                         name="paymentProvider"
                         value={provider.value}
                         checked={paymentProvider === provider.value}
-                        onChange={(e) => setPaymentProvider(e.target.value as 'paypal' | 'airwallex' | 'lianlianpay')}
+                        onChange={(e) => setPaymentProvider(e.target.value as 'paypal' | 'lianlianpay')}
                         className="sr-only"
                       />
                       <span className="text-xs text-[#3C2415]">{provider.label}</span>
@@ -891,19 +898,21 @@ export default function CheckoutPage() {
                   )}
 
                   <div className="space-y-2">
-                    {!existingOrderId && (
-                      <>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-[#3C2415]/60">{t('cart.subtotal')}</span>
-                          <span className="text-[#3C2415]">{formatPrice(validTotalPrice)}</span>
-                        </div>
-                        {shippingCost > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-[#3C2415]/60">{t('cart.shipping')}</span>
-                            <span className="text-[#3C2415]">{formatPrice(shippingCost)}</span>
-                          </div>
-                        )}
-                      </>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[#3C2415]/60">{t('cart.subtotal')}</span>
+                      <span className="text-[#3C2415]">{formatPrice(effectiveSubtotal)}</span>
+                    </div>
+                    {shippingMethod === 'express' && expediteFee > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-[#3C2415]/60">{t('checkout.expediteFee')}</span>
+                        <span className="text-[#3C2415]">{formatPrice(expediteFee)}</span>
+                      </div>
+                    )}
+                    {baseShippingCost > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-[#3C2415]/60">{t('cart.shipping')}</span>
+                        <span className="text-[#3C2415]">{formatPrice(baseShippingCost)}</span>
+                      </div>
                     )}
                     <div className="border-t border-[#3C2415]/10 pt-3 flex justify-between">
                       <span className="text-sm font-medium text-[#3C2415]">{t('cart.total')}</span>

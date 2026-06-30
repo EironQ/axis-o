@@ -53,7 +53,9 @@ router.get('/settings/public', async (_req, res) => {
       default_currency: allSettings.default_currency || 'USD',
       free_shipping_threshold: allSettings.free_shipping_threshold || '200',
       shipping_fee: allSettings.shipping_fee || '50',
+      express_shipping_fee: allSettings.express_shipping_fee || '50',
       estimated_delivery_days: allSettings.estimated_delivery_days || '7',
+      return_address: allSettings.return_address || '',
     }
 
     res.json({

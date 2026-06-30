@@ -462,7 +462,7 @@ export default function OrderDetailPage() {
               <div>
                 <span className="text-xs text-[#3C2415]/50">{t('order.paymentProvider')}</span>
                 <p className="mt-1 text-sm text-[#3C2415]">
-                  {order.payment.provider === 'stripe' ? 'Stripe' : order.payment.provider === 'paypal' ? 'PayPal' : order.payment.provider === 'airwallex' ? 'Airwallex' : order.payment.provider}
+                  {order.payment.provider === 'paypal' ? 'PayPal' : order.payment.provider === 'lianlianpay' ? 'LianLian Pay' : order.payment.provider}
                 </p>
               </div>
               <div>

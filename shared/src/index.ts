@@ -148,7 +148,7 @@ export interface OrderItem {
   totalPrice: number
 }
 
-export type PaymentProvider = 'stripe' | 'paypal' | 'airwallex'
+export type PaymentProvider = 'paypal' | 'lianlianpay'
 export type PaymentStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'refunded' | 'partially_refunded'
 
 export interface Payment {

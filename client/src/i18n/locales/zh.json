@@ -178,7 +178,7 @@
     "total": "合计",
     "freeShippingThreshold": "满 ${threshold} 即可享受免费配送",
     "checkout": "去结算 ({count})",
-    "paymentMethods": "支持 PayPal · Airwallex · Lianlianpay"
+    "paymentMethods": "支持 PayPal · Lianlianpay"
   },
   "checkout": {
     "title": "支付",
@@ -192,6 +192,7 @@
     "express": "加急配送",
     "standardDesc": "3-5个工作日送达",
     "expressDesc": "1-2个工作日送达",
+    "expediteFee": "加急配送费用",
     "paymentMethod": "支付方式",
     "discountCode": "优惠码",
     "discountPlaceholder": "输入优惠码",
@@ -210,6 +211,7 @@
     "orderCancelled": "订单已取消/退款，无法继续支付",
     "orderLoadError": "订单加载失败，请稍后重试",
     "paymentLoadError": "支付组件加载失败",
+    "loadingCart": "购物车加载中，请稍候",
     "backToOrder": "返回订单",
     "orderConfirmation": "订单确认",
     "orderCreated": "订单已创建",
@@ -243,7 +245,6 @@
     "confirmPay": "确认支付 {amount}",
     "processingBtn": "处理中...",
     "abnormalStatus": "支付状态异常，请联系客服",
-    "stripeUnavailable": "Stripe 支付服务暂不可用",
     "paypalUnavailable": "PayPal 支付服务暂不可用",
     "payWithPayPal": "使用 PayPal 支付",
     "paypalLoadFailed": "PayPal 加载失败",
@@ -458,6 +459,7 @@
       "images": "凭证图片",
       "imageAlt": "凭证 {{index}}",
       "adminNote": "管理员备注",
+      "returnAddress": "退货地址",
       "logs": "处理日志"
     },
     "log": {

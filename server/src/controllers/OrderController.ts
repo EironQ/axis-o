@@ -4,9 +4,7 @@ import { orders, orderItems, cartItems, productVariants, products, productImages
 import { eq, and, sql, desc, exists } from 'drizzle-orm'
 import { v4 as uuidv4 } from '../utils/uuid'
 import { getCachedSetting } from '../services/settingsCache'
-import { StripeService } from '../services/payment/stripe'
 import { PayPalService } from '../services/payment/paypal'
-import { AirwallexService } from '../services/payment/airwallex'
 
 export const OrderController = {
   list: async (req: Request, res: Response) => {
@@ -280,10 +278,20 @@ export const OrderController = {
         }
       })
 
-      const shippingCost = shippingMethod === 'express' ? (() => {
+      const baseShippingFee = (() => {
         const fee = parseFloat(getCachedSetting('shipping_fee'))
         return isNaN(fee) ? 50 : fee
-      })() : 0
+      })()
+      const expressExtraFee = (() => {
+        const fee = parseFloat(getCachedSetting('express_shipping_fee'))
+        return isNaN(fee) ? 50 : fee
+      })()
+      const freeThreshold = (() => {
+        const val = parseFloat(getCachedSetting('free_shipping_threshold'))
+        return isNaN(val) ? 200 : val
+      })()
+      const baseShipping = subtotal >= freeThreshold ? 0 : baseShippingFee
+      const shippingCost = shippingMethod === 'express' ? baseShipping + expressExtraFee : baseShipping
       const taxAmount = 0
       let total = subtotal + shippingCost - discountAmount
       total = parseFloat(total.toFixed(2))
@@ -806,12 +814,8 @@ export const OrderController = {
 
       let refundResult: { id: string; status: string | null }
       try {
-        if (payment.provider === 'stripe') {
-          refundResult = await StripeService.createRefund(payment.transactionId, amountToRefund)
-        } else if (payment.provider === 'paypal') {
+        if (payment.provider === 'paypal') {
           refundResult = await PayPalService.createRefund(payment.transactionId, amountToRefund, order.currency)
-        } else if (payment.provider === 'airwallex') {
-          refundResult = await AirwallexService.createRefund(payment.transactionId, amountToRefund, order.currency)
         } else {
           throw new Error(`Refund not supported for provider: ${payment.provider}`)
         }

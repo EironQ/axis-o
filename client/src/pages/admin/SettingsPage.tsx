@@ -15,7 +15,7 @@ interface TabConfig {
   id: string
   label: string
   icon: string
-  fields: { key: string; label: string; type: 'text' | 'email' | 'number' | 'password' | 'select' | 'image'; placeholder?: string; options?: { label: string; value: string }[]; accept?: string }[]
+  fields: { key: string; label: string; type: 'text' | 'email' | 'number' | 'password' | 'select' | 'image' | 'textarea'; placeholder?: string; options?: { label: string; value: string }[]; accept?: string }[]
 }
 
 const getAuthHeaders = () => {
@@ -49,8 +49,10 @@ const tabConfigs: TabConfig[] = [
     icon: '📦',
     fields: [
       { key: 'shipping_fee', label: '运费金额(USD)', type: 'number', placeholder: '50' },
+      { key: 'express_shipping_fee', label: '加急配送附加费(USD)', type: 'number', placeholder: '50' },
       { key: 'free_shipping_threshold', label: '免运费门槛金额(USD)', type: 'number', placeholder: '200' },
       { key: 'estimated_delivery_days', label: '预计配送天数', type: 'number', placeholder: '7' },
+      { key: 'return_address', label: '退货地址', type: 'textarea', placeholder: '请输入退货地址' },
     ],
   },
   {
@@ -71,17 +73,10 @@ const tabConfigs: TabConfig[] = [
     label: '支付配置',
     icon: '💳',
     fields: [
-      { key: 'stripe_public_key', label: 'Stripe 公钥 (Publishable Key)', type: 'password', placeholder: 'pk_live_...' },
-      { key: 'stripe_secret_key', label: 'Stripe 密钥 (Secret Key)', type: 'password', placeholder: 'sk_live_...' },
-      { key: 'stripe_webhook_secret', label: 'Stripe Webhook 密钥', type: 'password', placeholder: 'whsec_...' },
       { key: 'paypal_client_id', label: 'PayPal Client ID', type: 'password', placeholder: 'Ac...' },
       { key: 'paypal_client_secret', label: 'PayPal Client Secret', type: 'password', placeholder: 'EL...' },
       { key: 'paypal_webhook_id', label: 'PayPal Webhook ID', type: 'password', placeholder: 'WH-...' },
       { key: 'paypal_mode', label: 'PayPal 模式', type: 'select', options: [{ label: 'Sandbox (测试)', value: 'sandbox' }, { label: 'Live (生产)', value: 'live' }] },
-      { key: 'airwallex_client_id', label: 'Airwallex Client ID', type: 'password', placeholder: 'your-client-id' },
-      { key: 'airwallex_api_key', label: 'Airwallex API Key', type: 'password', placeholder: 'your-api-key' },
-      { key: 'airwallex_webhook_signing_secret', label: 'Airwallex Webhook 签名密钥', type: 'password', placeholder: 'your-webhook-signing-secret' },
-      { key: 'airwallex_environment', label: 'Airwallex 环境', type: 'select', options: [{ label: 'Sandbox (测试)', value: 'sandbox' }, { label: 'Live (生产)', value: 'live' }] },
       { key: 'lianlianpay_merchant_id', label: '连连支付商户ID', type: 'password', placeholder: 'your-merchant-id' },
       { key: 'lianlianpay_private_key', label: '连连支付私钥', type: 'password', placeholder: 'your-private-key' },
       { key: 'lianlianpay_public_key', label: '连连支付公钥', type: 'password', placeholder: 'your-public-key' },
@@ -393,6 +388,14 @@ export default function SettingsPage() {
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
+                    ) : field.type === 'textarea' ? (
+                      <textarea
+                        value={formValues[field.key] ?? ''}
+                        onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                        placeholder={field.placeholder}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#C89460] focus:border-transparent resize-none"
+                      />
                     ) : (
                       <input
                         type={field.type === 'password' ? 'password' : 'text'}

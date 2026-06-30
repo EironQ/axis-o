@@ -82,9 +82,8 @@ const reasonConfig: Record<string, string> = {
 }
 
 const paymentProviderLabels: Record<string, string> = {
-  stripe: 'Stripe (信用卡)',
   paypal: 'PayPal',
-  airwallex: 'Airwallex',
+  lianlianpay: 'LianLian Pay',
 }
 
 function getAuthHeaders() {

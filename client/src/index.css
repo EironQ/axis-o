@@ -100,28 +100,4 @@ body {
   transform: scale(0);
 }
 
-/* Hide browser auto-fill security warning in Stripe Payment Element */
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 30px #FAF7F2 inset !important;
-}
 
-/* Hide Stripe security warning banner */
-.stripe-el-banner,
-.stripe-security-banner,
-[data-stripe-banner] {
-  display: none !important;
-  visibility: hidden !important;
-  height: 0 !important;
-  opacity: 0 !important;
-}
-
-/* Additional styles to hide warning messages */
-div[style*="security"],
-div[style*="autofill"],
-div[style*="安全"],
-span[style*="安全"],
-div[role="alert"] {
-  display: none !important;
-}

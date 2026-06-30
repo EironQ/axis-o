@@ -10,6 +10,8 @@ export interface StoreSettings {
   default_currency: string
   free_shipping_threshold: string
   shipping_fee: string
+  express_shipping_fee: string
+  return_address: string
   estimated_delivery_days: string
 }
 
@@ -44,6 +46,8 @@ const defaultStore: StoreSettings = {
   default_currency: 'USD',
   free_shipping_threshold: '200',
   shipping_fee: '50',
+  express_shipping_fee: '50',
+  return_address: '',
   estimated_delivery_days: '7',
 }
 

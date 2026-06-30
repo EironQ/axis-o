@@ -178,7 +178,7 @@
     "total": "Total",
     "freeShippingThreshold": "Free shipping on orders over ${threshold}",
     "checkout": "Checkout ({count})",
-    "paymentMethods": "Accepts PayPal · Airwallex · Lianlianpay"
+    "paymentMethods": "Accepts PayPal · Lianlianpay"
   },
   "checkout": {
     "title": "Checkout",
@@ -192,6 +192,7 @@
     "express": "Express",
     "standardDesc": "3-5 business days",
     "expressDesc": "1-2 business days",
+    "expediteFee": "Express Fee",
     "paymentMethod": "Payment Method",
     "discountCode": "Discount Code",
     "discountPlaceholder": "Enter discount code",
@@ -210,6 +211,7 @@
     "orderCancelled": "Order has been cancelled/refunded and cannot be paid",
     "orderLoadError": "Failed to load order, please try again later",
     "paymentLoadError": "Payment component failed to load",
+    "loadingCart": "Loading cart, please wait",
     "backToOrder": "Back to Order",
     "orderConfirmation": "Order Confirmation",
     "orderCreated": "Order Created",
@@ -243,7 +245,6 @@
     "confirmPay": "Pay {amount}",
     "processingBtn": "Processing...",
     "abnormalStatus": "Payment status abnormal, please contact support",
-    "stripeUnavailable": "Stripe service unavailable",
     "paypalUnavailable": "PayPal service unavailable",
     "payWithPayPal": "Pay with PayPal",
     "paypalLoadFailed": "PayPal failed to load",
@@ -458,6 +459,7 @@
       "images": "Evidence Images",
       "imageAlt": "Evidence {{index}}",
       "adminNote": "Admin Note",
+      "returnAddress": "Return Address",
       "logs": "Processing Logs"
     },
     "log": {

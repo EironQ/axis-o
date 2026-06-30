@@ -4,10 +4,6 @@ import { eq, inArray } from 'drizzle-orm'
 import { v4 as uuidv4 } from '../utils/uuid'
 
 const NEW_SETTINGS = [
-  { key: 'airwallex_client_id', value: '', group: 'payment', description: 'Airwallex Client ID' },
-  { key: 'airwallex_api_key', value: '', group: 'payment', description: 'Airwallex API Key' },
-  { key: 'airwallex_webhook_signing_secret', value: '', group: 'payment', description: 'Airwallex Webhook签名密钥' },
-  { key: 'airwallex_environment', value: 'sandbox', group: 'payment', description: 'Airwallex环境' },
   { key: 'lianlianpay_merchant_id', value: '', group: 'payment', description: '连连支付商户ID' },
   { key: 'lianlianpay_private_key', value: '', group: 'payment', description: '连连支付私钥' },
   { key: 'lianlianpay_public_key', value: '', group: 'payment', description: '连连支付公钥' },

@@ -1,89 +1,34 @@
 import { env } from '../../config/env'
-import { getCachedSetting, getSetting } from '../settingsCache'
-import * as crypto from 'crypto'
+import { getCachedSetting } from '../settingsCache'
 
-// ============================================
-// 连连国际版 (LianLian Global / Inc) API
-// 文档: https://doc.lianlianpay.com/3476473e0
-// ============================================
-
-// 生产环境域名
-const PRODUCTION_DOMAIN = 'https://gpapi.lianlianpay.com'
-// 沙箱环境域名
-const SANDBOX_DOMAIN = 'https://celer-api.LianLianpay-inc.com'
-
-function getDomain(): string {
-  // 沙箱模式使用沙箱域名，生产环境使用生产域名
-  const mode = process.env.LIANLIANPAY_MODE || 'production'
-  return mode === 'sandbox' ? SANDBOX_DOMAIN : PRODUCTION_DOMAIN
+function getLianlianpayDomain(): string {
+  const mode = getCachedSetting('lianlianpay_mode') || 'live'
+  if (mode === 'live' || mode === 'production') {
+    return 'https://gpapi.lianlianpay.com'
+  }
+  return 'https://celer-api.lianlianpay-inc.com'
 }
 
+import { getSetting } from '../settingsCache'
+
 async function resolveMerchantId(): Promise<string> {
-  const cached = getCachedSetting('lianlianpay_merchant_id')
+  let cached = getCachedSetting('lianlianpay_merchant_id')
   if (cached) return cached
-  const fresh = await getSetting('lianlianpay_merchant_id')
-  if (fresh) return fresh
-  return process.env.LIANLIANPAY_MERCHANT_ID || ''
+  
+  const fromDb = await getSetting('lianlianpay_merchant_id')
+  if (fromDb) return fromDb
+  
+  throw new Error('Lianlianpay Merchant ID is not configured')
 }
 
 async function resolvePrivateKey(): Promise<string> {
-  const cached = getCachedSetting('lianlianpay_private_key')
-  if (cached) return normalizePrivateKey(cached)
-  const fresh = await getSetting('lianlianpay_private_key')
-  if (fresh) return normalizePrivateKey(fresh)
-  return process.env.LIANLIANPAY_PRIVATE_KEY || ''
-}
-
-/**
- * 规范化私钥格式：
- * - 如果是纯 Base64（无 PEM 头尾），自动包装为 PKCS#8 PEM 格式
- * - 如果已有 PEM 头尾，直接返回
- */
-function normalizePrivateKey(key: string): string {
-  if (!key) return key
-  const trimmed = key.trim()
-  // 已经是标准 PEM 格式（头尾独占一行）
-  if (/^-----BEGIN[\s\S]+?-----END/.test(trimmed) && trimmed.includes('\n')) {
-    console.log('[LIANLIAN] Key already standard PEM format, length:', trimmed.length)
-    return trimmed
-  }
-
-  // 提取纯 Base64 内容（去掉所有 PEM 头尾标记）
-  const base64Content = trimmed
-    .replace(/-----BEGIN[\s\S]*?KEY-----/g, '')  // 去掉头部
-    .replace(/-----END[\s\S]*?KEY-----/g, '')    // 去掉尾部
-    .trim()
-    .replace(/\s+/g, '')                          // 去掉所有空白
-
-  if (!base64Content) {
-    console.log('[LIANLIAN] No base64 content found in key')
-    return key
-  }
-
-  console.log('[LIANLIAN] Rebuilding PEM from base64, content length:', base64Content.length)
-  // 每 64 字符换行，包装为标准 PKCS#8 PEM
-  const lines = base64Content.match(/.{1,64}/g) || [base64Content]
-  const pem = '-----BEGIN PRIVATE KEY-----\n' + lines.join('\n') + '\n-----END PRIVATE KEY-----'
-  console.log('[LIANLIAN] Rebuilt PEM first 80 chars:', pem.substring(0, 80))
-  return pem
-}
-
-/**
- * 生成签名
- * 签名因子: merchant_id + merchant_transaction_id
- * 使用 RSA-SHA256 私钥签名，Base64 编码输出
- */
-function generateSignature(merchantId: string, merchantTransactionId: string, privateKey: string): string {
-  // 构造签名字符串: merchant_id=xxx&merchant_transaction_id=xxx
-  const signStr = `merchant_id=${merchantId}&merchant_transaction_id=${merchantTransactionId}`
-
-  // RSA-SHA256 签名
-  const sign = crypto.createSign('RSA-SHA256')
-  sign.update(signStr)
-  sign.end()
-
-  const signature = sign.sign(privateKey, 'base64')
-  return signature
+  let cached = getCachedSetting('lianlianpay_private_key')
+  if (cached) return cached
+  
+  const fromDb = await getSetting('lianlianpay_private_key')
+  if (fromDb) return fromDb
+  
+  throw new Error('Lianlianpay Private Key is not configured')
 }
 
 export interface CreateLianlianpayPaymentParams {
@@ -94,13 +39,6 @@ export interface CreateLianlianpayPaymentParams {
   description?: string
   returnUrl?: string
   notifyUrl?: string
-  customerInfo?: {
-    email?: string
-    phone?: string
-    firstName?: string
-    lastName?: string
-    country?: string
-  }
 }
 
 export interface LianlianpayPaymentResult {
@@ -112,67 +50,110 @@ export interface LianlianpayPaymentResult {
 export class LianlianpayService {
   static async createPayment(params: CreateLianlianpayPaymentParams): Promise<LianlianpayPaymentResult> {
     const merchantId = await resolveMerchantId()
+    const subMerchantId = await getCachedSetting('lianlianpay_sub_merchant_id')
     const privateKey = await resolvePrivateKey()
 
-    if (!merchantId) {
-      throw new Error('Lianlianpay Merchant ID is not configured. Please set it in Admin Settings > Payment.')
-    }
-    if (!privateKey) {
-      throw new Error('Lianlianpay Private Key is not configured. Please set it in Admin Settings > Payment.')
-    }
-
-    const domain = getDomain()
+    const domain = getLianlianpayDomain()
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    const seconds = String(now.getSeconds()).padStart(2, '0')
+    const ms = String(now.getMilliseconds()).padStart(3, '0')
+    const orderTime = `${year}${month}${day}${hours}${minutes}${seconds}`
     const currency = params.currency.toUpperCase()
-    // 连连国际版 API 金额单位为最小货币单位（分/cents）
-    const amountInCents = Math.round(params.amount * 100)
+    
+    const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`
+    
+    console.log('Timestamp:', timestamp, 'length:', timestamp.length)
+    console.log('OrderTime:', orderTime, 'length:', orderTime.length)
+    const amountValue = params.amount.toFixed(2)
     const returnUrl = params.returnUrl || `${env.FRONTEND_URL}/checkout?orderId=${params.orderId}`
     const notifyUrl = params.notifyUrl || `${env.API_BASE_URL}/api/payments/lianlianpay/notify`
 
-    // 商户端交易号
-    const merchantTransactionId = `AXIS_${params.orderNumber}`
+    const merchantTransactionId = `AXIS_${params.orderNumber}_${Date.now()}`
 
     try {
-      // 构造请求体（符合连连国际版 v3 API 格式）
-      const now = new Date()
-      const orderTime = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
-
       const requestBody: Record<string, any> = {
         merchant_transaction_id: merchantTransactionId,
         merchant_id: merchantId,
         notification_url: notifyUrl,
         redirect_url: returnUrl,
-        country: this.getCountryCode(currency),
+        cancel_url: returnUrl,
+        country: 'US',
         merchant_order: {
           merchant_order_id: params.orderNumber,
-          merchant_user_no: `USER_${params.orderNumber}`,
           merchant_order_time: orderTime,
-          order_description: params.description || `AXIS O - Order #${params.orderNumber}`,
-          order_amount: amountInCents,
+          order_description: params.description || `AXIS O Order #${params.orderNumber}`,
+          order_amount: Number(amountValue),
           order_currency_code: currency,
+          products: [
+            {
+              product_id: `prod_${params.orderNumber}`,
+              name: 'AXIS O Product',
+              description: params.description || 'Order payment',
+              url: 'https://axis-o.com',
+              sku: 'AXIS-O-SKU-001',
+              shipping_provider: 'DHL',
+              price: Number(amountValue),
+              quantity: 1,
+              category: '36321643',
+            },
+          ],
+        },
+        customer: {
+          customer_type: 'I',
+          first_name: 'Guest',
+          last_name: 'User',
+          full_name: 'Guest User',
+          email: 'guest@example.com',
+          phone: '+8613800138000',
+          ip: '127.0.0.1',
+        },
+        billing: {
+          billing_name: 'Guest User',
+          billing_phone: '+8613800138000',
+          billing_email: 'guest@example.com',
+          billing_address: {
+            street_address1: '123 Main St',
+            street_address2: '',
+            city: 'New York',
+            state: 'NY',
+            zip: '10001',
+            country: 'US',
+          },
+        },
+        shipping: {
+          shipping_name: 'Guest User',
+          shipping_phone: '+8613800138000',
+          shipping_email: 'guest@example.com',
+          shipping_address: {
+            street_address1: '123 Main St',
+            street_address2: '',
+            city: 'New York',
+            state: 'NY',
+            zip: '10001',
+            country: 'US',
+          },
         },
       }
 
-      // 可选：添加客户信息
-      if (params.customerInfo?.email || params.customerInfo?.phone) {
-        requestBody.customer = {}
-        if (params.customerInfo.email) requestBody.customer.email = params.customerInfo.email
-        if (params.customerInfo.phone) requestBody.customer.phone = params.customerInfo.phone
-        if (params.customerInfo.firstName) requestBody.customer.first_name = params.customerInfo.firstName
-        if (params.customerInfo.lastName) requestBody.customer.last_name = params.customerInfo.lastName
-        if (params.customerInfo.country) requestBody.customer.country = params.customerInfo.country
+      if (subMerchantId) {
+        requestBody.sub_merchant_id = subMerchantId
       }
 
-      // 生成签名
-      const signature = generateSignature(merchantId, merchantTransactionId, privateKey)
+      // 连连支付签名格式：按字母升序排列，递归展平为 key=value&key=value 格式
+      const signStr = this.buildSignString(requestBody)
+      const signature = await this.signRequest(signStr, privateKey)
 
-      // 格式化时间戳: yyyyMMddHHmmss
-      const timestamp = orderTime
+      // 发送请求体用原始JSON（排序后）
+      const sortedBody = this.sortObject(requestBody)
+      const requestBodyStr = JSON.stringify(sortedBody)
 
-      console.log('[LIANLIAN] === REQUEST DEBUG ===')
-      console.log('[LIANLIAN] URL:', `${domain}/v3/merchants/${merchantId}/payments`)
-      console.log('[LIANLIAN] BODY:', JSON.stringify(requestBody, null, 2))
-      console.log('[LIANLIAN] Headers: signature=' + signature.substring(0, 30) + '... timezone=Asia/Shanghai timestamp=' + timestamp)
-
+      console.log('Lianlianpay request:', { url: `${domain}/v3/merchants/${merchantId}/payments`, timestamp })
+      
       const response = await fetch(`${domain}/v3/merchants/${merchantId}/payments`, {
         method: 'POST',
         headers: {
@@ -182,30 +163,129 @@ export class LianlianpayService {
           'timezone': 'Asia/Shanghai',
           'timestamp': timestamp,
         },
-        body: JSON.stringify(requestBody),
+        body: requestBodyStr,
       })
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('LianLian Global API error:', response.status, errorText)
-        throw new Error(`LianLian Global API error: ${response.status} - ${errorText}`)
+        throw new Error(`Lianlianpay API error: ${response.status} - ${errorText}`)
       }
 
       const result = await response.json() as any
 
-      // 检查返回状态（国际版返回格式可能与国内版不同）
-      if (result.code && result.code !== '0000' && result.code !== 'SUCCESS' && result.code !== 200) {
-        throw new Error(`LianLian Global payment failed: ${result.message || result.msg || JSON.stringify(result)}`)
+      if (result.return_code !== 'SUCCESS') {
+        throw new Error(`Lianlianpay payment failed: ${result.return_message || result.return_code || JSON.stringify(result)}`)
       }
 
       return {
-        paymentId: result.data?.transaction_id || result.transaction_id || merchantTransactionId,
-        redirectUrl: result.data?.payment_url || result.payment_url || result.data?.redirect_url || '',
-        totalAmount: amountInCents.toString(),
+        paymentId: result.order?.ll_transaction_id || merchantTransactionId,
+        redirectUrl: result.order?.payment_url || '',
+        totalAmount: amountValue,
       }
     } catch (error: any) {
-      console.error('LianLian Global payment error:', error)
+      console.error('Lianlianpay payment error:', error)
       throw error
+    }
+  }
+
+  static sortObject(obj: any): any {
+    if (obj === null || typeof obj !== 'object') {
+      return obj
+    }
+    
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.sortObject(item))
+    }
+    
+    const sortedKeys = Object.keys(obj).sort()
+    const sortedObj: any = {}
+    for (const key of sortedKeys) {
+      sortedObj[key] = this.sortObject(obj[key])
+    }
+    return sortedObj
+  }
+
+  /**
+   * 构建连连支付签名串：递归排序后展平为 key=value&key=value 格式
+   * 例如: {"a":"100","b":{"c":"10","d":"20"}} → a=100&c=10&d=20
+   */
+  static buildSignString(obj: any): string {
+    if (obj === null || obj === undefined) {
+      return ''
+    }
+    
+    if (typeof obj !== 'object') {
+      return String(obj)
+    }
+    
+    if (Array.isArray(obj)) {
+      // 数组元素递归处理，用&连接
+      return obj.map(item => this.buildSignString(item)).filter(s => s !== '').join('&')
+    }
+    
+    // 对象按key字母升序排列，递归展平
+    const sortedKeys = Object.keys(obj).sort()
+    const parts: string[] = []
+    for (const key of sortedKeys) {
+      const value = obj[key]
+      if (value === null || value === undefined) {
+        continue // null/undefined不参与签名
+      }
+      if (typeof value === 'object') {
+        // 子对象/数组递归展平
+        const subStr = this.buildSignString(value)
+        if (subStr !== '') {
+          parts.push(subStr)
+        }
+      } else {
+        // 基本类型：key=value
+        parts.push(`${key}=${String(value)}`)
+      }
+    }
+    return parts.join('&')
+  }
+
+  static async signRequest(data: string, privateKey: string): Promise<string> {
+    try {
+      const crypto = await import('crypto')
+      
+      let formattedKey = privateKey.trim()
+      
+      // 处理PKCS8格式私钥
+      if (formattedKey.startsWith('-----BEGIN PRIVATE KEY-----')) {
+        formattedKey = formattedKey.replace(
+          /-----BEGIN PRIVATE KEY-----\s*/,
+          '-----BEGIN PRIVATE KEY-----\n'
+        )
+        formattedKey = formattedKey.replace(
+          /\s*-----END PRIVATE KEY-----/,
+          '\n-----END PRIVATE KEY-----'
+        )
+      } else if (formattedKey.startsWith('-----BEGIN RSA PRIVATE KEY-----')) {
+        formattedKey = formattedKey.replace(
+          /-----BEGIN RSA PRIVATE KEY-----\s*/,
+          '-----BEGIN RSA PRIVATE KEY-----\n'
+        )
+        formattedKey = formattedKey.replace(
+          /\s*-----END RSA PRIVATE KEY-----/,
+          '\n-----END RSA PRIVATE KEY-----'
+        )
+      } else {
+        if (formattedKey.includes('\\n')) {
+          formattedKey = formattedKey.replace(/\\n/g, '\n')
+        }
+        formattedKey = '-----BEGIN PRIVATE KEY-----\n' + formattedKey + '\n-----END PRIVATE KEY-----'
+      }
+      
+      // 连连支付使用SHA1withRSA
+      const sign = crypto.createSign('RSA-SHA1')
+      sign.update(Buffer.from(data, 'utf8'))
+      const signature = sign.sign(formattedKey, 'base64')
+      return signature
+    } catch (error: any) {
+      console.error('Lianlianpay sign error:', error.message || error)
+      console.error('Error stack:', error.stack)
+      throw new Error('Failed to sign request: ' + (error.message || 'Unknown error'))
     }
   }
 
@@ -213,80 +293,53 @@ export class LianlianpayService {
     const merchantId = await resolveMerchantId()
     const privateKey = await resolvePrivateKey()
 
-    if (!merchantId || !privateKey) {
-      throw new Error('Lianlianpay credentials not configured')
+    const domain = getLianlianpayDomain()
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hours = String(now.getHours()).padStart(2, '0')
+    const minutes = String(now.getMinutes()).padStart(2, '0')
+    const seconds = String(now.getSeconds()).padStart(2, '0')
+    const timestamp = `${year}${month}${day}${hours}${minutes}${seconds}`
+
+    const requestBody = {
+      merchant_id: merchantId,
+      merchant_transaction_id: orderId,
     }
 
-    const domain = getDomain()
-    const merchantTransactionId = `AXIS_${orderId}`
+    // 使用key=value&key=value格式签名
+    const signStr = this.buildSignString(requestBody)
+    const signature = await this.signRequest(signStr, privateKey)
 
-    const signature = generateSignature(merchantId, merchantTransactionId, privateKey)
-    const now = new Date()
-    const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
+    console.log('Query URL:', `${domain}/v3/merchants/${merchantId}/payments/${orderId}`)
+    console.log('Query sign string:', signStr)
 
-    const response = await fetch(
-      `${domain}/v3/merchants/${merchantId}/payments/${merchantTransactionId}`,
-      {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'signature': signature,
-          'timezone': 'Asia/Shanghai',
-          'timestamp': timestamp,
-        },
-      }
-    )
+    const response = await fetch(`${domain}/v3/merchants/${merchantId}/payments/${orderId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'signature': signature,
+        'timezone': 'Asia/Shanghai',
+        'timestamp': timestamp,
+      },
+    })
 
     if (!response.ok) {
-      console.error('LianLian Global query error:', response.status)
-      throw new Error(`LianLian Global query API error: ${response.status}`)
+      const errorText = await response.text()
+      throw new Error(`Lianlianpay query error: ${response.status} - ${errorText}`)
     }
 
     const result = await response.json() as any
 
-    // 国际版支付状态映射
-    const payStatus = result.data?.status || result.status || ''
-    let status = 'pending'
-    if (payStatus === 'SUCCESS' || payStatus === 'SUCCEEDED' || payStatus === 'settled') status = 'succeeded'
-    else if (payStatus === 'FAILED' || payStatus === 'FAIL' || payStatus === 'cancelled') status = 'failed'
-    else if (payStatus === 'PROCESSING' || payStatus === 'pending') status = 'processing'
+    if (result.return_code !== 'SUCCESS') {
+      throw new Error(`Lianlianpay query failed: ${result.return_message || result.return_code}`)
+    }
 
     return {
-      status,
-      transactionId: result.data?.transaction_id || result.transaction_id || '',
+      status: result.order?.payment_data?.payment_status || 'UNKNOWN',
+      transactionId: result.order?.ll_transaction_id || orderId,
     }
-  }
-
-  /**
-   * 根据货币代码推断国家代码
-   */
-  private static getCountryCode(currency: string): string {
-    const map: Record<string, string> = {
-      'USD': 'US',
-      'EUR': 'DE',
-      'GBP': 'GB',
-      'JPY': 'JP',
-      'HKD': 'HK',
-      'SGD': 'SG',
-      'AUD': 'AU',
-      'CAD': 'CA',
-      'NZD': 'NZ',
-      'CNY': 'CN',
-      'KRW': 'KR',
-      'MYR': 'MY',
-      'THB': 'TH',
-      'PHP': 'PH',
-      'IDR': 'ID',
-      'VND': 'VN',
-      'INR': 'IN',
-      'BRL': 'BR',
-      'MXN': 'MX',
-      'ZAR': 'ZA',
-      'NGN': 'NG',
-      'EGP': 'EG',
-      'AED': 'AE',
-      'SAR': 'SA',
-    }
-    return map[currency] || 'US'
   }
 }

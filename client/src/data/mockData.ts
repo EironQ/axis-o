@@ -31,7 +31,7 @@ export interface MockOrder {
   total: number
   shippingAddress: MockAddress
   billingAddress: MockAddress
-  paymentMethod: 'stripe' | 'paypal' | 'airwallex'
+  paymentMethod: 'paypal' | 'lianlianpay'
   trackingNumber?: string
   note?: string
 }
@@ -140,7 +140,7 @@ export const mockOrders: MockOrder[] = [
     taxAmount: 388.8,
     discountAmount: 0,
     total: 5248.8,
-    paymentMethod: 'stripe',
+    paymentMethod: 'paypal',
     trackingNumber: 'SF1234567890',
     shippingAddress: mockAddresses[0],
     billingAddress: mockAddresses[0],
@@ -182,7 +182,7 @@ export const mockOrders: MockOrder[] = [
     taxAmount: 262.4,
     discountAmount: 0,
     total: 3542.4,
-    paymentMethod: 'airwallex',
+    paymentMethod: 'lianlianpay',
     trackingNumber: 'SF9876543210',
     shippingAddress: mockAddresses[1],
     billingAddress: mockAddresses[1],
@@ -253,7 +253,7 @@ export const mockOrders: MockOrder[] = [
     taxAmount: 531.2,
     discountAmount: 0,
     total: 7171.2,
-    paymentMethod: 'stripe',
+    paymentMethod: 'paypal',
     shippingAddress: mockAddresses[0],
     billingAddress: mockAddresses[0],
     note: '请使用礼盒包装',
@@ -319,7 +319,7 @@ export function createMockOrder(orderData: Partial<MockOrder>): MockOrder {
     taxAmount: orderData.taxAmount || 0,
     discountAmount: orderData.discountAmount || 0,
     total: orderData.total || 0,
-    paymentMethod: orderData.paymentMethod || 'stripe',
+    paymentMethod: orderData.paymentMethod || 'paypal',
     shippingAddress: orderData.shippingAddress || mockAddresses[0],
     billingAddress: orderData.billingAddress || mockAddresses[0],
     items: orderData.items || [],

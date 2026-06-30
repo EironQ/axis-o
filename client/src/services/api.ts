@@ -228,7 +228,7 @@ export interface CreateOrderRequest {
   shippingAddressId: string
   billingAddressId: string
   shippingMethod: string
-  paymentProvider: 'paypal' | 'airwallex' | 'lianlianpay'
+  paymentProvider: 'paypal' | 'lianlianpay'
   discountCode?: string
   notes?: string
   currency?: string
@@ -684,7 +684,6 @@ export interface PaymentIntentResponse {
     publishableKey: string
     clientSecret: string
     paypalOrderId?: string
-    airwallexRedirectUrl?: string
     lianlianpayRedirectUrl?: string
     alreadyPaid?: boolean
   }
@@ -710,7 +709,7 @@ export interface RefundResponse {
 }
 
 export const paymentApi = {
-  createIntent: async (orderId: string, provider: 'paypal' | 'airwallex' | 'lianlianpay' = 'paypal') => {
+  createIntent: async (orderId: string, provider: 'paypal' | 'lianlianpay' = 'paypal') => {
     return request<PaymentIntentResponse>(`/payments/intent/${orderId}?provider=${provider}`)
   },
 

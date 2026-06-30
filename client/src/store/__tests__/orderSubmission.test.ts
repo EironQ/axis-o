@@ -53,7 +53,7 @@ describe('Order Submission Concurrency Control', () => {
         shippingAddressId: 'addr-1',
         billingAddressId: 'addr-1',
         shippingMethod: 'standard',
-        paymentProvider: 'stripe' as const,
+        paymentProvider: 'paypal' as const,
         currency: 'CNY',
       }
 
@@ -112,7 +112,7 @@ describe('Order Submission Concurrency Control', () => {
         shippingAddressId: 'addr-1',
         billingAddressId: 'addr-1',
         shippingMethod: 'standard',
-        paymentProvider: 'stripe' as const,
+        paymentProvider: 'paypal' as const,
         currency: 'CNY',
       }
 

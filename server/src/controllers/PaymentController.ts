@@ -1,14 +1,11 @@
 import { Request, Response } from 'express'
 import { db } from '../config/database'
-import { orders, payments, paymentEvents, users } from '../db/schema'
-import { eq, and, desc, like, or, sql } from 'drizzle-orm'
+import { orders, payments, paymentEvents } from '../db/schema'
+import { eq, and, desc, like, sql } from 'drizzle-orm'
 import { v4 as uuidv4 } from '../utils/uuid'
-import { StripeService, getStripePublishableKey } from '../services/payment/stripe'
-import { PayPalService, getPayPalClientId } from '../services/payment/paypal'
-import { AirwallexService } from '../services/payment/airwallex'
+import { PayPalService } from '../services/payment/paypal'
 import { LianlianpayService } from '../services/payment/lianlianpay'
 import { OrderEmailHelper } from '../services/orderEmailHelper'
-import { getCachedSetting, getSetting } from '../services/settingsCache'
 
 type EventType = 'intent_created' | 'intent_succeeded' | 'intent_failed' | 'intent_canceled' | 'refund_requested' | 'refund_succeeded' | 'refund_failed' | 'status_synced' | 'webhook_received'
 
@@ -16,7 +13,7 @@ interface EventLogParams {
   paymentId: string
   orderId: string
   eventType: EventType
-  provider: 'stripe' | 'paypal' | 'airwallex' | 'lianlianpay'
+  provider: 'paypal' | 'lianlianpay'
   providerEventId?: string | null
   amount?: string
   currency?: string
@@ -46,89 +43,12 @@ function insertPaymentEvent(params: EventLogParams) {
   })
 }
 
-function extractFee(paymentIntent: any): string | undefined {
-  if (paymentIntent.latest_charge && typeof paymentIntent.latest_charge === 'object') {
-    const charge = paymentIntent.latest_charge as any
-    const balanceTransaction = charge.balance_transaction
-    if (typeof balanceTransaction === 'object' && balanceTransaction?.fee_details?.[0]?.amount) {
-      return (balanceTransaction.fee_details[0].amount / 100).toFixed(2)
-    }
-  }
-  return undefined
-}
-
-async function syncPaymentIntentToDatabase(
-  paymentIntent: any,
-  paymentId: string,
-  order: { id: string; total: string | number; orderNumber: string }
-): Promise<void> {
-  if (paymentIntent.status === 'succeeded') {
-    const calculatedFee = extractFee(paymentIntent)
-    await db.transaction(async (tx) => {
-      await tx
-        .update(payments)
-        .set({
-          status: 'succeeded',
-          feeAmount: calculatedFee,
-          rawResponse: JSON.stringify(paymentIntent),
-          updatedAt: new Date(),
-        })
-        .where(eq(payments.id, paymentId))
-
-      await tx
-        .update(orders)
-        .set({ status: 'paid', paidAt: new Date(), updatedAt: new Date() })
-        .where(eq(orders.id, order.id))
-
-      await tx.insert(paymentEvents).values({
-        id: uuidv4(),
-        paymentId,
-        orderId: order.id,
-        eventType: 'intent_succeeded',
-        provider: 'stripe',
-        providerEventId: paymentIntent.id,
-        amount: (paymentIntent.amount / 100).toFixed(2),
-        currency: paymentIntent.currency,
-        feeAmount: calculatedFee,
-        statusBefore: 'pending',
-        statusAfter: 'succeeded',
-        rawData: JSON.stringify({ id: paymentIntent.id, payment_method: paymentIntent.payment_method }),
-        notes: 'Payment confirmed via intent sync',
-        createdAt: new Date(),
-      })
-    })
-
-    OrderEmailHelper.sendOrderConfirmationEmail(order.id).catch((emailError) => {
-      console.error(`Failed to send order confirmation email for order ${order.id}:`, emailError)
-    })
-  } else if (paymentIntent.status === 'processing') {
-    await db.update(payments)
-      .set({ status: 'processing', updatedAt: new Date() })
-      .where(eq(payments.id, paymentId))
-
-    await db.insert(paymentEvents).values({
-      id: uuidv4(),
-      paymentId,
-      orderId: order.id,
-      eventType: 'status_synced',
-      provider: 'stripe',
-      providerEventId: paymentIntent.id,
-      amount: (paymentIntent.amount / 100).toFixed(2),
-      currency: paymentIntent.currency,
-      statusBefore: 'pending',
-      statusAfter: 'processing',
-      notes: 'Sync: payment is processing',
-      createdAt: new Date(),
-    })
-  }
-}
-
 export const PaymentController = {
   createPaymentIntent: async (req: Request, res: Response) => {
     try {
       const userId = req.user!.userId
       const orderId = req.params.orderId as string
-      const provider = (req.query.provider as string) || 'stripe'
+      const provider = (req.query.provider as string) || 'paypal'
 
       const orderResult = await db
         .select({
@@ -161,69 +81,6 @@ export const PaymentController = {
 
       if (existingPayment.length > 0) {
         if (existingPayment[0].status === 'processing' || existingPayment[0].status === 'pending') {
-          if (provider === 'stripe' && existingPayment[0].transactionId && existingPayment[0].provider === 'stripe') {
-            const paymentIntent = await StripeService.retrievePaymentIntent(existingPayment[0].transactionId)
-            if (paymentIntent.status === 'requires_payment_method') {
-              await StripeService.cancelPaymentIntent(existingPayment[0].transactionId)
-              const newStripeResult = await StripeService.createPaymentIntent({
-                orderId,
-                orderNumber: order.orderNumber,
-                amount: parseFloat(order.total.toString()),
-                currency: 'USD',
-                description: `AXIS O - Order #${order.orderNumber}`,
-              })
-              await db.update(payments)
-                .set({ transactionId: newStripeResult.paymentIntentId, updatedAt: new Date() })
-                .where(eq(payments.id, existingPayment[0].id))
-              res.json({
-                success: true,
-                data: {
-                  paymentId: existingPayment[0].id,
-                  orderId,
-                  orderNumber: order.orderNumber,
-                  amount: parseFloat(order.total.toString()),
-                  currency: 'USD',
-                  publishableKey: await getStripePublishableKey(),
-                  clientSecret: newStripeResult.clientSecret,
-                },
-              })
-              return
-            }
-            if (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing') {
-              try {
-                await syncPaymentIntentToDatabase(paymentIntent, existingPayment[0].id, order)
-              } catch (syncErr) {
-                console.error('[Payment] Failed to sync paid intent to DB:', syncErr)
-              }
-              res.json({
-                success: true,
-                data: {
-                  paymentId: existingPayment[0].id,
-                  orderId,
-                  orderNumber: order.orderNumber,
-                  amount: parseFloat(order.total.toString()),
-                  currency: 'USD',
-                  publishableKey: await getStripePublishableKey(),
-                  clientSecret: paymentIntent.client_secret,
-                  alreadyPaid: true,
-                },
-              })
-              return
-            }
-            res.json({
-              success: true,
-              data: {
-                paymentId: existingPayment[0].id,
-                orderId,
-                orderNumber: order.orderNumber,
-                amount: parseFloat(order.total.toString()),
-                currency: 'USD',
-                publishableKey: await getStripePublishableKey(),
-                clientSecret: paymentIntent.client_secret,
-              },
-            })
-            return
-          }
           if (provider === 'paypal' && existingPayment[0].transactionId && existingPayment[0].provider === 'paypal') {
             res.json({
               success: true,
@@ -233,8 +90,6 @@ export const PaymentController = {
                 orderNumber: order.orderNumber,
                 amount: parseFloat(order.total.toString()),
                 currency: 'USD',
-                publishableKey: await getPayPalClientId(),
-                clientSecret: '',
                 paypalOrderId: existingPayment[0].transactionId,
               },
             })
@@ -248,58 +103,6 @@ export const PaymentController = {
       }
 
       const paymentId = uuidv4()
-
-      if (provider === 'airwallex') {
-        const airwallexResult = await AirwallexService.createPayment({
-          orderId,
-          orderNumber: order.orderNumber,
-          amount: parseFloat(order.total.toString()),
-          currency: order.currency,
-          description: `AXIS O - Order #${order.orderNumber}`,
-        })
-
-        const paymentData = {
-          id: paymentId,
-          orderId,
-          provider: 'airwallex' as const,
-          transactionId: airwallexResult.paymentIntentId,
-          status: 'pending' as const,
-          amount: order.total,
-          currency: order.currency,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }
-
-        await db.insert(payments).values(paymentData)
-
-        await insertPaymentEvent({
-          paymentId,
-          orderId,
-          eventType: 'intent_created',
-          provider: 'airwallex',
-          providerEventId: airwallexResult.paymentIntentId,
-          amount: order.total,
-          currency: order.currency,
-          statusAfter: 'pending',
-          notes: `Airwallex payment created for order #${order.orderNumber}`,
-        })
-
-        res.json({
-          success: true,
-          data: {
-            paymentId,
-            orderId,
-            orderNumber: order.orderNumber,
-            amount: parseFloat(order.total.toString()),
-            currency: order.currency,
-            publishableKey: '',
-            clientSecret: airwallexResult.clientSecret,
-            paypalOrderId: '',
-            airwallexRedirectUrl: airwallexResult.redirectUrl,
-          },
-        })
-        return
-      }
 
       if (provider === 'paypal') {
         try {
@@ -347,8 +150,6 @@ export const PaymentController = {
               orderNumber: order.orderNumber,
               amount: amount,
               currency: 'USD',
-              publishableKey: await getPayPalClientId(),
-              clientSecret: '',
               paypalOrderId: paypalResult.paypalOrderId,
             },
           })
@@ -410,9 +211,6 @@ export const PaymentController = {
               orderNumber: order.orderNumber,
               amount: parseFloat(order.total.toString()),
               currency: order.currency,
-              publishableKey: '',
-              clientSecret: '',
-              paypalOrderId: '',
               lianlianpayRedirectUrl: lianlianpayResult.redirectUrl,
             },
           })
@@ -430,288 +228,10 @@ export const PaymentController = {
         }
       }
 
-      const stripeResult = await StripeService.createPaymentIntent({
-        orderId,
-        orderNumber: order.orderNumber,
-        amount: parseFloat(order.total.toString()),
-        currency: 'USD',
-        description: `AXIS O - Order #${order.orderNumber}`,
-      })
-
-      const paymentData = {
-        id: paymentId,
-        orderId,
-        provider: 'stripe' as const,
-        transactionId: stripeResult.paymentIntentId,
-        status: 'pending' as const,
-        amount: order.total,
-        currency: order.currency,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-
-      await db.insert(payments).values(paymentData)
-
-      await insertPaymentEvent({
-        paymentId,
-        orderId,
-        eventType: 'intent_created',
-        provider: 'stripe',
-        providerEventId: stripeResult.paymentIntentId,
-        amount: order.total,
-        currency: order.currency,
-        statusAfter: 'pending',
-        notes: `PaymentIntent created for order #${order.orderNumber}`,
-      })
-
-      res.json({
-        success: true,
-        data: {
-          paymentId,
-          orderId,
-          orderNumber: order.orderNumber,
-          amount: parseFloat(order.total.toString()),
-          currency: 'USD',
-          publishableKey: await getStripePublishableKey(),
-          clientSecret: stripeResult.clientSecret,
-          paypalOrderId: '',
-        },
-      })
+      res.status(400).json({ success: false, error: { code: 'UNSUPPORTED_PROVIDER', message: `Unsupported payment provider: ${provider}` } })
     } catch (error) {
       console.error('Create payment intent error:', error)
       res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to create payment intent' } })
-    }
-  },
-
-  handleWebhook: async (req: Request, res: Response) => {
-    try {
-      const signature = req.headers['stripe-signature'] as string | undefined
-      const rawBody = req.body
-      const event = await StripeService.constructWebhookEvent(rawBody, signature)
-
-      switch (event.type) {
-        case 'payment_intent.succeeded': {
-          const paymentIntent = event.data.object
-          const orderId = paymentIntent.metadata.orderId
-
-          if (!orderId) {
-            console.error('Webhook: missing orderId in payment intent metadata')
-            break
-          }
-
-          const paymentResult = await db
-            .select({ id: payments.id, status: payments.status })
-            .from(payments)
-            .where(eq(payments.transactionId, paymentIntent.id))
-            .limit(1)
-
-          if (paymentResult.length > 0) {
-            const paymentId = paymentResult[0].id
-            const previousStatus = paymentResult[0].status
-            const calculatedFee = extractFee(paymentIntent)
-
-            await db.transaction(async (tx) => {
-              await tx
-                .update(payments)
-                .set({
-                  status: 'succeeded',
-                  feeAmount: calculatedFee,
-                  rawResponse: JSON.stringify(paymentIntent),
-                  updatedAt: new Date(),
-                })
-                .where(eq(payments.id, paymentId))
-
-              await tx
-                .update(orders)
-                .set({ status: 'paid', paidAt: new Date(), updatedAt: new Date() })
-                .where(eq(orders.id, orderId))
-
-              await tx.insert(paymentEvents).values({
-                id: uuidv4(),
-                paymentId,
-                orderId,
-                eventType: 'intent_succeeded',
-                provider: 'stripe',
-                providerEventId: paymentIntent.id,
-                amount: (paymentIntent.amount / 100).toFixed(2),
-                currency: paymentIntent.currency,
-                feeAmount: calculatedFee,
-                statusBefore: previousStatus,
-                statusAfter: 'succeeded',
-                rawData: JSON.stringify({ id: paymentIntent.id, payment_method: paymentIntent.payment_method }),
-                notes: 'Stripe webhook: payment_intent.succeeded',
-                createdAt: new Date(),
-              })
-            })
-
-            console.log(`Payment succeeded: order=${orderId}, pi=${paymentIntent.id}`)
-            
-            OrderEmailHelper.sendOrderConfirmationEmail(orderId).catch((emailError) => {
-              console.error(`Failed to send order confirmation email for order ${orderId}:`, emailError)
-            })
-          }
-          break
-        }
-
-        case 'payment_intent.payment_failed': {
-          const paymentIntent = event.data.object
-
-          const paymentResult = await db
-            .select({ id: payments.id, status: payments.status })
-            .from(payments)
-            .where(eq(payments.transactionId, paymentIntent.id))
-            .limit(1)
-
-          if (paymentResult.length > 0) {
-            const paymentId = paymentResult[0].id
-            const previousStatus = paymentResult[0].status
-            const orderId = paymentIntent.metadata.orderId || ''
-
-            await db.transaction(async (tx) => {
-              await tx
-                .update(payments)
-                .set({
-                  status: 'failed',
-                  rawResponse: JSON.stringify(paymentIntent),
-                  updatedAt: new Date(),
-                })
-                .where(eq(payments.id, paymentId))
-
-              await tx.insert(paymentEvents).values({
-                id: uuidv4(),
-                paymentId,
-                orderId: orderId || '',
-                eventType: 'intent_failed',
-                provider: 'stripe',
-                providerEventId: paymentIntent.id,
-                amount: (paymentIntent.amount / 100).toFixed(2),
-                currency: paymentIntent.currency,
-                statusBefore: previousStatus,
-                statusAfter: 'failed',
-                rawData: JSON.stringify({ id: paymentIntent.id, last_payment_error: paymentIntent.last_payment_error }),
-                notes: paymentIntent.last_payment_error?.message || 'Payment failed',
-                createdAt: new Date(),
-              })
-            })
-
-            console.log(`Payment failed: pi=${paymentIntent.id}`)
-          }
-          break
-        }
-
-        case 'charge.refunded': {
-          const charge = event.data.object as any
-          const paymentIntentId = charge.payment_intent
-
-          if (paymentIntentId) {
-            const paymentResult = await db
-              .select({ id: payments.id, orderId: payments.orderId, status: payments.status })
-              .from(payments)
-              .where(eq(payments.transactionId, paymentIntentId))
-              .limit(1)
-
-            if (paymentResult.length > 0) {
-              const paymentId = paymentResult[0].id
-              const orderId = paymentResult[0].orderId
-              const previousStatus = paymentResult[0].status
-              const isPartial = charge.amount_refunded < charge.amount
-              const newStatus = isPartial ? 'partially_refunded' as const : 'refunded' as const
-
-              await db.transaction(async (tx) => {
-                await tx
-                  .update(payments)
-                  .set({ status: newStatus, updatedAt: new Date() })
-                  .where(eq(payments.id, paymentId))
-
-                if (!isPartial) {
-                  await tx
-                    .update(orders)
-                    .set({ status: 'refunded', updatedAt: new Date() })
-                    .where(eq(orders.id, orderId))
-                }
-
-                await tx.insert(paymentEvents).values({
-                  id: uuidv4(),
-                  paymentId,
-                  orderId,
-                  eventType: 'refund_succeeded',
-                  provider: 'stripe',
-                  providerEventId: charge.id,
-                  amount: (charge.amount_refunded / 100).toFixed(2),
-                  currency: charge.currency,
-                  statusBefore: previousStatus,
-                  statusAfter: newStatus,
-                  rawData: JSON.stringify({ refund_id: charge.id, balance_transaction: charge.balance_transaction }),
-                  notes: isPartial ? `Partial refund: ${(charge.amount_refunded / 100).toFixed(2)} ${charge.currency}` : `Full refund processed`,
-                  createdAt: new Date(),
-                })
-              })
-            }
-          }
-          break
-        }
-
-        case 'charge.refund.updated': {
-          const charge = event.data.object as any
-          const paymentIntentId = charge.payment_intent
-
-          if (paymentIntentId) {
-            const paymentResult = await db
-              .select({ id: payments.id, orderId: payments.orderId, status: payments.status })
-              .from(payments)
-              .where(eq(payments.transactionId, paymentIntentId))
-              .limit(1)
-
-            if (paymentResult.length > 0) {
-              const paymentId = paymentResult[0].id
-              const orderId = paymentResult[0].orderId
-              const previousStatus = paymentResult[0].status
-              const isPartial = charge.amount_refunded < charge.amount
-              const newStatus = isPartial ? 'partially_refunded' as const : 'refunded' as const
-
-              await db.transaction(async (tx) => {
-                await tx
-                  .update(payments)
-                  .set({ status: newStatus, updatedAt: new Date() })
-                  .where(eq(payments.id, paymentId))
-
-                if (!isPartial) {
-                  await tx
-                    .update(orders)
-                    .set({ status: 'refunded', updatedAt: new Date() })
-                    .where(eq(orders.id, orderId))
-                }
-
-                await tx.insert(paymentEvents).values({
-                  id: uuidv4(),
-                  paymentId,
-                  orderId,
-                  eventType: 'refund_succeeded',
-                  provider: 'stripe',
-                  providerEventId: charge.id,
-                  amount: (charge.amount_refunded / 100).toFixed(2),
-                  currency: charge.currency,
-                  statusBefore: previousStatus,
-                  statusAfter: newStatus,
-                  rawData: JSON.stringify({ refund_id: charge.id, status: charge.status }),
-                  notes: `Refund updated via webhook`,
-                  createdAt: new Date(),
-                })
-              })
-            }
-          }
-          break
-        }
-
-        default: {
-          console.log(`Unhandled Stripe webhook event: ${event.type}`)
-        }
-      }
-
-      res.json({ success: true, received: true })
-    } catch (error) {
-      console.error('Webhook error:', error)
-      res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Webhook processing failed' } })
     }
   },
 
@@ -781,7 +301,8 @@ export const PaymentController = {
       if (payment.provider === 'paypal') {
         refund = await PayPalService.createRefund(payment.transactionId, parseFloat(order.total.toString()), order.currency)
       } else {
-        refund = await StripeService.createRefund(payment.transactionId)
+        res.status(400).json({ success: false, error: { code: 'UNSUPPORTED_PROVIDER', message: `Refund not supported for provider: ${payment.provider}` } })
+        return
       }
 
       const refundStatus = refund.status === 'succeeded' || refund.status === 'COMPLETED' ? 'refunded' as const : 'processing' as const
@@ -1239,10 +760,7 @@ export const PaymentController = {
       const orderResult = await db
         .select({
           id: orders.id,
-          orderNumber: orders.orderNumber,
           status: orders.status,
-          total: orders.total,
-          currency: orders.currency,
         })
         .from(orders)
         .where(and(eq(orders.id, orderId), eq(orders.userId, userId)))
@@ -1254,124 +772,27 @@ export const PaymentController = {
       }
 
       const order = orderResult[0]
-      if (order.status !== 'pending') {
-        res.json({ success: true, data: { orderId, status: order.status, message: `Order is already ${order.status}` } })
-        return
-      }
 
       const paymentResult = await db
-        .select({ id: payments.id, transactionId: payments.transactionId, status: payments.status })
+        .select({ id: payments.id, status: payments.status, provider: payments.provider })
         .from(payments)
         .where(eq(payments.orderId, orderId))
         .limit(1)
 
       if (paymentResult.length === 0) {
-        res.status(400).json({ success: false, error: { code: 'NO_PAYMENT', message: 'No payment record found for this order' } })
+        res.status(400).json({ success: false, error: { code: 'NO_PAYMENT', message: 'No payment record found' } })
         return
       }
 
-      const payment = paymentResult[0]
-      if (!payment.transactionId) {
-        res.status(400).json({ success: false, error: { code: 'NO_TRANSACTION', message: 'No transaction ID found' } })
-        return
-      }
-
-      try {
-        const paymentIntent = await StripeService.retrievePaymentIntent(payment.transactionId)
-
-        if (paymentIntent.status === 'succeeded') {
-          const previousStatus = payment.status
-          const calculatedFee = extractFee(paymentIntent)
-
-          await db.transaction(async (tx) => {
-            await tx
-              .update(payments)
-              .set({
-                status: 'succeeded',
-                feeAmount: calculatedFee,
-                rawResponse: JSON.stringify(paymentIntent),
-                updatedAt: new Date(),
-              })
-              .where(eq(payments.id, payment.id))
-
-            await tx
-              .update(orders)
-              .set({ status: 'paid', paidAt: new Date(), updatedAt: new Date() })
-              .where(eq(orders.id, orderId))
-
-            await tx.insert(paymentEvents).values({
-              id: uuidv4(),
-              paymentId: payment.id,
-              orderId,
-              eventType: 'intent_succeeded',
-              provider: 'stripe',
-              providerEventId: paymentIntent.id,
-              amount: (paymentIntent.amount / 100).toFixed(2),
-              currency: paymentIntent.currency,
-              feeAmount: calculatedFee,
-              statusBefore: previousStatus,
-              statusAfter: 'succeeded',
-              rawData: JSON.stringify({ id: paymentIntent.id, payment_method: paymentIntent.payment_method }),
-              notes: 'Payment confirmed via status sync',
-              createdAt: new Date(),
-            })
-          })
-
-          OrderEmailHelper.sendOrderConfirmationEmail(orderId).catch((emailError) => {
-            console.error(`Failed to send order confirmation email for order ${orderId}:`, emailError)
-          })
-
-          res.json({ success: true, data: { orderId, status: 'paid', message: 'Payment confirmed' } })
-          return
-        }
-
-        if (paymentIntent.status === 'processing') {
-          await insertPaymentEvent({
-            paymentId: payment.id,
-            orderId,
-            eventType: 'status_synced',
-            provider: 'stripe',
-            providerEventId: payment.transactionId,
-            statusBefore: payment.status,
-            statusAfter: payment.status,
-            notes: 'Sync: payment still processing',
-          })
-
-          res.json({ success: true, data: { orderId, status: 'processing', message: 'Payment is still processing' } })
-          return
-        }
-
-        await insertPaymentEvent({
-          paymentId: payment.id,
+      res.json({
+        success: true,
+        data: {
           orderId,
-          eventType: 'status_synced',
-          provider: 'stripe',
-          providerEventId: payment.transactionId,
-          statusBefore: payment.status,
-          statusAfter: paymentIntent.status,
-          notes: `Sync complete, status: ${paymentIntent.status}`,
-        })
-
-        res.json({ success: true, data: { orderId, status: paymentIntent.status, message: `Payment status: ${paymentIntent.status}` } })
-      } catch (stripeError) {
-        console.error('Failed to verify payment with Stripe:', stripeError)
-
-        await insertPaymentEvent({
-          paymentId: payment.id,
-          orderId,
-          eventType: 'status_synced',
-          provider: 'stripe',
-          providerEventId: payment.transactionId,
-          statusBefore: payment.status,
-          statusAfter: payment.status,
-          notes: 'Sync attempt failed, waiting for webhook',
-        })
-
-        res.json({
-          success: true,
-          data: { orderId, status: 'pending', message: 'Could not verify payment with Stripe, please wait for webhook confirmation' },
-        })
-      }
+          status: order.status,
+          paymentStatus: paymentResult[0].status,
+          provider: paymentResult[0].provider,
+        },
+      })
     } catch (error) {
       console.error('Sync payment status error:', error)
       res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to sync payment status' } })
@@ -1439,155 +860,6 @@ export const PaymentController = {
     } catch (error) {
       console.error('List payment events error:', error)
       res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to list payment events' } })
-    }
-  },
-
-  handleAirwallexNotify: async (req: Request, res: Response) => {
-    try {
-      const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
-
-      console.log('[Airwallex Notify] Received notification:', rawBody)
-
-      const timestamp = (req.headers['x-airwallex-timestamp'] as string) || ''
-      const signature = (req.headers['x-airwallex-signature'] as string) || ''
-
-      const signingKey = await (async () => {
-        const cached = getCachedSetting('airwallex_webhook_signing_key')
-        if (cached) return cached
-        const fresh = await getSetting('airwallex_webhook_signing_key')
-        return fresh || ''
-      })()
-
-      if (signingKey && timestamp && signature) {
-        const verified = AirwallexService.verifyWebhookSignature(rawBody, signature, timestamp, signingKey)
-        if (!verified) {
-          console.error('[Airwallex Notify] Signature verification failed')
-          res.status(400).json({ result: { resultCode: 'SIGNATURE_FAILED', resultMessage: 'signature verification failed', resultStatus: 'F' } })
-          return
-        }
-      }
-
-      const event = JSON.parse(rawBody) as {
-        id?: string
-        event_type?: string
-        created_at?: string
-        data?: {
-          object?: {
-            id?: string
-            status?: string
-            amount?: number
-            currency?: string
-            merchant_order_id?: string
-            payment_method_id?: string
-          }
-        }
-      }
-
-      const paymentIntentId = event.data?.object?.id || event.id || ''
-      const paymentStatus = event.data?.object?.status || ''
-      const currency = event.data?.object?.currency || 'USD'
-      const amountValue = event.data?.object?.amount?.toFixed(2) || ''
-
-      if (!paymentIntentId) {
-        console.error('[Airwallex Notify] Missing payment intent id')
-        res.status(400).json({ result: { resultCode: 'MISSING_ID', resultMessage: 'missing payment intent id', resultStatus: 'F' } })
-        return
-      }
-
-      const paymentResult = await db
-        .select({
-          id: payments.id,
-          status: payments.status,
-          orderId: payments.orderId,
-        })
-        .from(payments)
-        .where(eq(payments.transactionId, paymentIntentId))
-        .limit(1)
-
-      if (paymentResult.length === 0) {
-        console.error(`[Airwallex Notify] No payment record found for paymentIntentId ${paymentIntentId}`)
-        res.status(400).json({ result: { resultCode: 'NOT_FOUND', resultMessage: 'payment not found', resultStatus: 'F' } })
-        return
-      }
-
-      const { id: paymentRecordId, status: previousStatus, orderId } = paymentResult[0]
-
-      if (event.event_type === 'payment_intent.succeeded' || paymentStatus === 'succeeded') {
-        if (previousStatus === 'succeeded') {
-          res.json({ result: { resultCode: 'SUCCESS', resultMessage: 'success', resultStatus: 'S' } })
-          return
-        }
-
-        await db.transaction(async (tx) => {
-          await tx
-            .update(payments)
-            .set({
-              status: 'succeeded',
-              rawResponse: rawBody,
-              updatedAt: new Date(),
-            })
-            .where(eq(payments.id, paymentRecordId))
-
-          await tx
-            .update(orders)
-            .set({ status: 'paid', paidAt: new Date(), updatedAt: new Date() })
-            .where(eq(orders.id, orderId))
-
-          await tx.insert(paymentEvents).values({
-            id: uuidv4(),
-            paymentId: paymentRecordId,
-            orderId,
-            eventType: 'intent_succeeded',
-            provider: 'airwallex',
-            providerEventId: paymentIntentId,
-            amount: amountValue || null,
-            currency,
-            statusBefore: previousStatus,
-            statusAfter: 'succeeded',
-            rawData: rawBody,
-            notes: 'Airwallex webhook: payment succeeded',
-            createdAt: new Date(),
-          })
-        })
-
-        console.log(`[Airwallex Notify] Payment succeeded: order=${orderId}, paymentIntentId=${paymentIntentId}`)
-      } else if (event.event_type === 'payment_intent.failed' || paymentStatus === 'failed') {
-        await db.transaction(async (tx) => {
-          await tx
-            .update(payments)
-            .set({
-              status: 'failed',
-              rawResponse: rawBody,
-              updatedAt: new Date(),
-            })
-            .where(eq(payments.id, paymentRecordId))
-
-          await tx.insert(paymentEvents).values({
-            id: uuidv4(),
-            paymentId: paymentRecordId,
-            orderId,
-            eventType: 'intent_failed',
-            provider: 'airwallex',
-            providerEventId: paymentIntentId,
-            amount: amountValue || null,
-            currency,
-            statusBefore: previousStatus,
-            statusAfter: 'failed',
-            rawData: rawBody,
-            notes: `Airwallex notification: payment failed`,
-            createdAt: new Date(),
-          })
-        })
-
-        console.log(`[Airwallex Notify] Payment failed: order=${orderId}, paymentIntentId=${paymentIntentId}`)
-      } else {
-        console.log(`[Airwallex Notify] Unhandled event type / status: ${event.event_type} / ${paymentStatus}`)
-      }
-
-      res.json({ result: { resultCode: 'SUCCESS', resultMessage: 'success', resultStatus: 'S' } })
-    } catch (error) {
-      console.error('[Airwallex Notify] Processing error:', error)
-      res.status(500).json({ result: { resultCode: 'ERROR', resultMessage: 'internal error', resultStatus: 'F' } })
     }
   },
 }

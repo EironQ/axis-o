@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import Button from '@/components/ui/Button'
 
-interface AirwallexPaymentFormProps {
+interface RedirectPaymentFormProps {
   redirectUrl: string
-  clientSecret?: string
   orderId: string
   orderNumber: string
   amount: number
@@ -11,16 +10,19 @@ interface AirwallexPaymentFormProps {
   onSuccess: (tradeNo: string) => void
   onError: (error: string) => void
   onCancel: () => void
+  provider?: 'lianlianpay'
 }
 
 function formatDisplayAmount(amount: number, currency: string): string {
   return `${currency} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
 }
 
-export default function AirwallexPaymentForm(props: AirwallexPaymentFormProps) {
+export default function RedirectPaymentForm(props: RedirectPaymentFormProps) {
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [countdown, setCountdown] = useState(5)
   const [message, setMessage] = useState<string | null>(null)
+
+  const providerName = props.provider === 'lianlianpay' ? 'LianLian Pay' : 'Payment Provider'
 
   useEffect(() => {
     if (!isRedirecting) return
@@ -49,7 +51,7 @@ export default function AirwallexPaymentForm(props: AirwallexPaymentFormProps) {
     return (
       <div className="flex flex-col items-center justify-center p-8 bg-[#FFF9F5] rounded-lg border border-[#C89460]/20">
         <div className="text-4xl mb-4">🔄</div>
-        <h3 className="text-lg font-medium text-[#3C2415] mb-2">Redirecting to Airwallex</h3>
+        <h3 className="text-lg font-medium text-[#3C2415] mb-2">Redirecting to {providerName}</h3>
         <p className="text-sm text-[#3C2415]/60 mb-4">
           Redirecting in {countdown} seconds...
         </p>
@@ -62,14 +64,14 @@ export default function AirwallexPaymentForm(props: AirwallexPaymentFormProps) {
 
   return (
     <div className="flex flex-col items-center p-6 bg-[#FFF9F5] rounded-lg border border-[#C89460]/20">
-      <div className="text-5xl mb-4">🌐</div>
-      <h3 className="text-lg font-medium text-[#3C2415] mb-2">Pay with Airwallex</h3>
+      <div className="text-5xl mb-4">💳</div>
+      <h3 className="text-lg font-medium text-[#3C2415] mb-2">Pay with {providerName}</h3>
       <p className="text-sm text-[#3C2415]/60 mb-1">Order #{props.orderNumber}</p>
       <p className="text-2xl font-semibold text-[#3C2415] mb-6">
         {formatDisplayAmount(props.amount, props.currency)}
       </p>
       <p className="text-xs text-[#3C2415]/50 mb-6 text-center max-w-xs">
-        You will be redirected to Airwallex to complete your payment securely.
+        You will be redirected to {providerName} to complete your payment securely.
       </p>
       {message && (
         <div className={`mb-4 p-3 rounded-lg text-sm w-full text-center ${

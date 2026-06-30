@@ -28,11 +28,6 @@ export const env = {
   // CORS
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
 
-  // Stripe
-  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || '',
-  STRIPE_PUBLISHABLE_KEY: process.env.STRIPE_PUBLISHABLE_KEY || '',
-  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || '',
-
   // PayPal
   PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID || '',
   PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET || '',
@@ -45,12 +40,6 @@ export const env = {
   ALIPAY_PUBLIC_KEY: process.env.ALIPAY_PUBLIC_KEY || '',
   ALIPAY_GATEWAY: process.env.ALIPAY_GATEWAY || 'https://openapi.alipay.com/gateway.do',
   ALIPAY_MODE: process.env.ALIPAY_MODE || 'sandbox',
-
-  // Airwallex
-  AIRWALLEX_CLIENT_ID: process.env.AIRWALLEX_CLIENT_ID || '',
-  AIRWALLEX_API_KEY: process.env.AIRWALLEX_API_KEY || '',
-  AIRWALLEX_WEBHOOK_SIGNING_KEY: process.env.AIRWALLEX_WEBHOOK_SIGNING_KEY || '',
-  AIRWALLEX_MODE: process.env.AIRWALLEX_MODE || 'sandbox',
 
   // Email
   SENDGRID_API_KEY: process.env.SENDGRID_API_KEY || '',

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Package, Clock, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { ArrowLeft, Package, Clock, CheckCircle, XCircle, AlertCircle, Loader2, MapPin } from 'lucide-react'
 import { returnService, ReturnRequest } from '@/services/return'
 import { uploadService } from '@/services/uploadService'
 import { useLanguage, useTranslation } from '@/i18n'
+import { useSettings } from '@/context/SettingsContext'
 import type { TranslationKey } from '@/i18n/types'
 
 const statusConfig: Record<string, { color: string; icon: typeof Clock }> = {
@@ -26,6 +27,7 @@ export default function ReturnDetailPage() {
   const navigate = useNavigate()
   const { lang } = useLanguage()
   const { t } = useTranslation()
+  const { store } = useSettings()
   const [returnData, setReturnData] = useState<ReturnRequest | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -242,6 +244,18 @@ export default function ReturnDetailPage() {
             <p className="text-gray-600 bg-yellow-50 rounded-lg p-4">
               {returnData.adminNote}
             </p>
+          </div>
+        )}
+
+        {(returnData.status === 'approved' || returnData.status === 'processing') && store.return_address && (
+          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <h3 className="font-medium text-[#3C2415] mb-3 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-[#8B7355]" />
+              {t('return.detail.returnAddress')}
+            </h3>
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+              <p className="text-[#3C2415] whitespace-pre-wrap">{store.return_address}</p>
+            </div>
           </div>
         )}
 

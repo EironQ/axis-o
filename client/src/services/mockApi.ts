@@ -33,7 +33,7 @@ export interface CreateOrderRequest {
   shippingAddressId: string
   billingAddressId: string
   shippingMethod?: string
-  paymentProvider: 'stripe' | 'paypal' | 'airwallex'
+  paymentProvider: 'paypal' | 'lianlianpay'
   discountCode?: string
   notes?: string
   currency?: string

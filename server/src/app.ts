@@ -21,7 +21,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:", "http:"],
-      connectSrc: ["'self'", "https://axis.cnprodo.com", "https://api.stripe.com"],
+      connectSrc: ["'self'", "https://axis.cnprodo.com"],
     },
   },
 }))
@@ -48,7 +48,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions))
 
-app.use('/api/payments/webhook', express.raw({ type: 'application/json' }))
 app.use('/api/payments/paypal/webhook', express.raw({ type: 'application/json' }))
 
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')))

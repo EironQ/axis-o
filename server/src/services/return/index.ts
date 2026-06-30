@@ -3,9 +3,7 @@ import { returns, returnItems, returnLogs } from '../../db/schema'
 import { users, orders, productImages, orderItems, payments } from '../../db/schema'
 import { eq, and, desc, sql, or, like, inArray } from 'drizzle-orm'
 import { v4 as uuidv4 } from '../../utils/uuid'
-import { StripeService } from '../payment/stripe'
 import { PayPalService } from '../payment/paypal'
-import { AirwallexService } from '../payment/airwallex'
 
 export interface CreateReturnInput {
   orderId: string
@@ -465,12 +463,8 @@ export const ReturnService = {
     try {
       const currency = returnData.orderCurrency as string || 'USD'
 
-      if (payment.provider === 'stripe' && payment.transactionId) {
-        await StripeService.createRefund(payment.transactionId, refundAmount)
-      } else if (payment.provider === 'paypal' && payment.transactionId) {
+      if (payment.provider === 'paypal' && payment.transactionId) {
         await PayPalService.createRefund(payment.transactionId, refundAmount, currency)
-      } else if (payment.provider === 'airwallex' && payment.transactionId) {
-        await AirwallexService.createRefund(payment.transactionId, refundAmount, currency)
       } else {
         throw new Error(`Refund not supported for provider: ${payment.provider}`)
       }
