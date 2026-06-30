@@ -3,7 +3,7 @@ import { db } from '../config/database'
 import { orders, payments, paymentEvents } from '../db/schema'
 import { eq, and, desc, like, sql } from 'drizzle-orm'
 import { v4 as uuidv4 } from '../utils/uuid'
-import { PayPalService } from '../services/payment/paypal'
+import { PayPalService, getPayPalClientId } from '../services/payment/paypal'
 import { LianlianpayService } from '../services/payment/lianlianpay'
 import { OrderEmailHelper } from '../services/orderEmailHelper'
 
@@ -82,6 +82,7 @@ export const PaymentController = {
       if (existingPayment.length > 0) {
         if (existingPayment[0].status === 'processing' || existingPayment[0].status === 'pending') {
           if (provider === 'paypal' && existingPayment[0].transactionId && existingPayment[0].provider === 'paypal') {
+            const publishableKey = await getPayPalClientId()
             res.json({
               success: true,
               data: {
@@ -91,6 +92,7 @@ export const PaymentController = {
                 amount: parseFloat(order.total.toString()),
                 currency: 'USD',
                 paypalOrderId: existingPayment[0].transactionId,
+                publishableKey,
               },
             })
             return
@@ -151,6 +153,7 @@ export const PaymentController = {
               amount: amount,
               currency: 'USD',
               paypalOrderId: paypalResult.paypalOrderId,
+              publishableKey: await getPayPalClientId(),
             },
           })
           return
