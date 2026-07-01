@@ -59,20 +59,34 @@ function isPlaceholderCredential(value: string): boolean {
 }
 
 async function resolveClientId(): Promise<string> {
-  const cached = getCachedSetting('paypal_client_id')
-  if (cached && !isPlaceholderCredential(cached)) return cached
-  const fresh = await getSetting('paypal_client_id')
-  if (fresh && !isPlaceholderCredential(fresh)) return fresh
-  if (env.PAYPAL_CLIENT_ID && !isPlaceholderCredential(env.PAYPAL_CLIENT_ID)) return env.PAYPAL_CLIENT_ID
+  const cached = getCachedSetting('paypal_client_id')?.trim()
+  if (cached && !isPlaceholderCredential(cached)) {
+    return cached
+  }
+  const fresh = (await getSetting('paypal_client_id'))?.trim()
+  if (fresh && !isPlaceholderCredential(fresh)) {
+    return fresh
+  }
+  const envVal = env.PAYPAL_CLIENT_ID?.trim()
+  if (envVal && !isPlaceholderCredential(envVal)) {
+    return envVal
+  }
   return ''
 }
 
 async function resolveClientSecret(): Promise<string> {
-  const cached = getCachedSetting('paypal_client_secret')
-  if (cached && !isPlaceholderCredential(cached)) return cached
-  const fresh = await getSetting('paypal_client_secret')
-  if (fresh && !isPlaceholderCredential(fresh)) return fresh
-  if (env.PAYPAL_CLIENT_SECRET && !isPlaceholderCredential(env.PAYPAL_CLIENT_SECRET)) return env.PAYPAL_CLIENT_SECRET
+  const cached = getCachedSetting('paypal_client_secret')?.trim()
+  if (cached && !isPlaceholderCredential(cached)) {
+    return cached
+  }
+  const fresh = (await getSetting('paypal_client_secret'))?.trim()
+  if (fresh && !isPlaceholderCredential(fresh)) {
+    return fresh
+  }
+  const envVal = env.PAYPAL_CLIENT_SECRET?.trim()
+  if (envVal && !isPlaceholderCredential(envVal)) {
+    return envVal
+  }
   return ''
 }
 
@@ -113,12 +127,15 @@ async function getAccessToken(): Promise<string> {
     return accessTokenCache.token
   }
 
-  const clientId = await resolveClientId()
-  const clientSecret = await resolveClientSecret()
+  const clientId = (await resolveClientId()).trim()
+  const clientSecret = (await resolveClientSecret()).trim()
+  const mode = isSandbox() ? 'sandbox' : 'live'
 
   if (!clientId || !clientSecret) {
     throw new Error('PayPal 支付凭证未配置，请在后台管理 > 支付设置中配置有效的 PayPal Client ID 和 Secret')
   }
+
+  console.log(`[PayPal] Getting access token for mode: ${mode}, clientId: ${clientId.substring(0, 8)}...`)
 
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
 
@@ -141,9 +158,18 @@ async function getAccessToken(): Promise<string> {
   }
 
   if (!oauthResponse.ok) {
-    const errorData = await oauthResponse.json().catch(() => ({ error: 'Unknown error' }))
+    let errorData: any = {}
+    try {
+      errorData = await oauthResponse.json()
+    } catch {
+      errorData = {}
+    }
     const errorMessage = errorData.error_description || errorData.error || 'Unknown authentication error'
     console.error(`[PayPal] Authentication failed: ${oauthResponse.status} - ${errorMessage}`)
+    console.error(`[PayPal] Mode: ${mode}, Client ID prefix: ${clientId.substring(0, 8)}...`)
+    if (oauthResponse.status === 401) {
+      throw new Error(`PayPal 认证失败: Client ID 或 Secret 不正确，或凭证与模式不匹配（当前模式: ${mode}）`)
+    }
     throw new Error(`PayPal 认证失败: ${errorMessage}`)
   }
 
@@ -152,6 +178,8 @@ async function getAccessToken(): Promise<string> {
     token: data.access_token,
     expiresAt: now + (data.expires_in - 60) * 1000,
   }
+
+  console.log(`[PayPal] Access token obtained successfully, expires in ${data.expires_in}s`)
 
   return data.access_token
 }
