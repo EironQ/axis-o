@@ -36,7 +36,7 @@ export default function ImageGallery({ images, productName }: ImageGalleryProps)
         ))}
       </div>
 
-      <div className="relative flex-1 bg-[#F5F0E8] overflow-hidden group max-h-[500px]">
+      <div className="relative flex-1 bg-[#F5F0E8] overflow-hidden group max-h-[600px]">
         <div
           className={`relative w-full aspect-[4/5] cursor-zoom-in ${
             zoomed ? 'cursor-zoom-out' : ''
