@@ -38,7 +38,7 @@ export default function ImageGallery({ images, productName }: ImageGalleryProps)
 
       <div className="relative flex-1 bg-[#F5F0E8] overflow-hidden group">
         <div
-          className={`relative w-full aspect-[4/5] cursor-zoom-in ${
+          className={`relative w-full aspect-[4/4] cursor-zoom-in ${
             zoomed ? 'cursor-zoom-out' : ''
           }`}
           onClick={() => setZoomed(!zoomed)}
