@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js'
+import { useState, useEffect, useRef } from 'react'
+import { PayPalScriptProvider, PayPalButtons, ReactPayPalScriptOptions } from '@paypal/react-paypal-js'
 import Button from '@/components/ui/Button'
 import { useTranslation } from '@/i18n'
 
@@ -27,6 +27,9 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
   const [message, setMessage] = useState<string | null>(null)
   const [messageType, setMessageType] = useState<'success' | 'info' | 'error'>('info')
   const [showRetry, setShowRetry] = useState(false)
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false)
+  const [scriptError, setScriptError] = useState<string | null>(null)
+  const retryCountRef = useRef(0)
 
   const clientId = props.clientId || FALLBACK_CLIENT_ID
 
@@ -71,6 +74,34 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
     }
   }
 
+  const handleRetry = () => {
+    retryCountRef.current += 1
+    setScriptError(null)
+    setIsScriptLoaded(false)
+    setMessage(null)
+    setShowRetry(false)
+  }
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isScriptLoaded && !scriptError) {
+        setMessageType('error')
+        setMessage(t('payment.paypalLoadFailed'))
+        setShowRetry(true)
+      }
+    }, 15000)
+
+    return () => clearTimeout(timer)
+  }, [isScriptLoaded, scriptError, t])
+
+  const paypalOptions: ReactPayPalScriptOptions = {
+    clientId,
+    currency: props.currency.toUpperCase(),
+    intent: 'capture',
+    components: 'buttons',
+    disableFunding: 'credit,card',
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-white border border-[#3C2415]/10 rounded-lg p-6">
@@ -88,36 +119,38 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
           </span>
         </div>
 
-        <PayPalScriptProvider options={{
-          clientId,
-          currency: props.currency.toUpperCase(),
-          intent: 'capture',
-        }}>
-          <PayPalButtons
-            style={{
-              shape: 'rect',
-              layout: 'vertical',
-              color: 'gold',
-              label: 'pay',
-              tagline: false,
-            }}
-            createOrder={async () => props.paypalOrderId}
-            onApprove={handleApprove}
-            onError={(err: Record<string, unknown>) => {
-              const errorMsg = typeof err?.message === 'string' ? err.message : t('payment.paypalLoadFailed')
-              setMessageType('error')
-              setMessage(errorMsg)
-              setShowRetry(true)
-              props.onError(errorMsg)
-            }}
-            onCancel={() => {
-              setMessageType('info')
-              setMessage(t('payment.cancelled'))
-              setShowRetry(false)
-              props.onCancel()
-            }}
-            disabled={isProcessing}
-          />
+        <PayPalScriptProvider options={paypalOptions}>
+          <div className="min-h-[150px]">
+            <PayPalButtons
+              style={{
+                shape: 'rect',
+                layout: 'vertical',
+                color: 'gold',
+                label: 'pay',
+                tagline: false,
+              }}
+              createOrder={async () => {
+                setIsScriptLoaded(true)
+                return props.paypalOrderId
+              }}
+              onApprove={handleApprove}
+              onError={(err: Record<string, unknown>) => {
+                console.error('PayPal buttons error:', err)
+                const errorMsg = typeof err?.message === 'string' ? err.message : t('payment.paypalLoadFailed')
+                setMessageType('error')
+                setMessage(errorMsg)
+                setShowRetry(true)
+                props.onError(errorMsg)
+              }}
+              onCancel={() => {
+                setMessageType('info')
+                setMessage(t('payment.cancelled'))
+                setShowRetry(false)
+                props.onCancel()
+              }}
+              disabled={isProcessing}
+            />
+          </div>
         </PayPalScriptProvider>
 
         {message && (
@@ -143,6 +176,17 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
             onClick={props.onCancel}
           >
             {t('payment.backToOrder')}
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            className="flex-1"
+            onClick={handleRetry}
+            disabled={retryCountRef.current >= 3}
+          >
+            Retry
+            {retryCountRef.current > 0 && ` (${retryCountRef.current}/3)`}
           </Button>
         </div>
       )}
