@@ -8,6 +8,7 @@ import { useTranslation, useLanguage } from '@/i18n'
 import ProductInfo from '@/components/products/ProductInfo'
 import ProductDescription from '@/components/products/ProductDescription'
 import ProductDetailContent from '@/components/products/ProductDetailContent'
+import SEO from '@/components/SEO'
 
 export default function ProductDetailPage() {
   const { store } = useSettings()
@@ -65,6 +66,12 @@ export default function ProductDetailPage() {
 
   return (
     <main className="min-h-screen bg-[#FAF7F2]">
+      <SEO
+        title={lang === 'zh' ? (product.metaTitleZh || product.nameZh) : (product.metaTitleEn || product.nameEn)}
+        description={lang === 'zh' ? (product.metaDescriptionZh || product.descriptionZh) : (product.metaDescriptionEn || product.descriptionEn)}
+        image={product.images?.[0]}
+        url={`/${lang}/products/${product.id}`}
+      />
       <div className="mx-auto max-w-[1440px] px-8 pt-24 pb-6">
         <div className="flex items-center gap-2 text-xs text-[#3C2415]/40 mb-8">
           <Link to={`/${lang}`} className="hover:text-[#C89460] transition-colors">{t('nav.home')}</Link>

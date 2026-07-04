@@ -1,6 +1,7 @@
 import { Ruler, RotateCcw, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '@/i18n'
+import SEO from '@/components/SEO'
 
 function useAboutTranslation() {
   const { lang } = useLanguage()
@@ -175,6 +176,7 @@ export default function AboutPage() {
 
   return (
     <main className="min-h-screen bg-[#FAF7F2]">
+      <SEO title={t({ zh: '关于我们', en: 'About Us' })} description={t({ zh: '了解AXIS O品牌故事、工艺传承与设计理念', en: 'Discover AXIS O brand story, craftsmanship heritage and design philosophy' })} />
       <div className="pt-28 pb-20 md:pb-28 bg-[#F5F0E8]">
         <div className="mx-auto max-w-[1440px] px-8 text-center">
           <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-6">

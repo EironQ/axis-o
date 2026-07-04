@@ -24,15 +24,33 @@ export interface SocialLinks {
   wechat_url?: string
 }
 
+export interface SeoSettings {
+  meta_title_en: string
+  meta_title_zh: string
+  meta_description_en: string
+  meta_description_zh: string
+  google_analytics_id: string
+}
+
 export interface PublicSettings {
   social: SocialLinks
   store: StoreSettings
+  seo: SeoSettings
+}
+
+const defaultSeo: SeoSettings = {
+  meta_title_en: 'AXIS O - Luxury Leather Goods',
+  meta_title_zh: 'AXIS O - 奢华皮具',
+  meta_description_en: 'Premium handcrafted leather bags and accessories',
+  meta_description_zh: '匠心打造的高端皮革手袋与配饰',
+  google_analytics_id: '',
 }
 
 interface SettingsContextValue {
   settings: PublicSettings | null
   store: StoreSettings
   social: SocialLinks
+  seo: SeoSettings
   loading: boolean
 }
 
@@ -55,6 +73,7 @@ const SettingsContext = createContext<SettingsContextValue>({
   settings: null,
   store: defaultStore,
   social: {},
+  seo: defaultSeo,
   loading: true,
 })
 
@@ -90,9 +109,26 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   const store = settings?.store || defaultStore
   const social = settings?.social || {}
+  const seo = settings?.seo || defaultSeo
+
+  // Google Analytics
+  useEffect(() => {
+    if (seo.google_analytics_id && typeof window !== 'undefined') {
+      const w = window as any
+      w.dataLayer = w.dataLayer || []
+      w.dataLayer.push(['js', new Date()])
+      w.dataLayer.push(['config', seo.google_analytics_id])
+      if (!document.querySelector('script[src*="googletagmanager"]')) {
+        const script = document.createElement('script')
+        script.async = true
+        script.src = `https://www.googletagmanager.com/gtag/js?id=${seo.google_analytics_id}`
+        document.head.appendChild(script)
+      }
+    }
+  }, [seo.google_analytics_id])
 
   return (
-    <SettingsContext.Provider value={{ settings, store, social, loading }}>
+    <SettingsContext.Provider value={{ settings, store, social, seo, loading }}>
       {children}
     </SettingsContext.Provider>
   )

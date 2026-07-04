@@ -58,11 +58,20 @@ router.get('/settings/public', async (_req, res) => {
       return_address: allSettings.return_address || '',
     }
 
+    const seoInfo = {
+      meta_title_en: allSettings.meta_title_en || 'AXIS O - Luxury Leather Goods',
+      meta_title_zh: allSettings.meta_title_zh || 'AXIS O - 奢华皮具',
+      meta_description_en: allSettings.meta_description_en || 'Premium handcrafted leather bags and accessories',
+      meta_description_zh: allSettings.meta_description_zh || '匠心打造的高端皮革手袋与配饰',
+      google_analytics_id: allSettings.google_analytics_id || '',
+    }
+
     res.json({
       success: true,
       data: {
         social,
         store: storeInfo,
+        seo: seoInfo,
       },
     })
   } catch {

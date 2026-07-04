@@ -2,6 +2,7 @@ import { useTranslation } from '@/i18n'
 import { useLanguage } from '@/i18n'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Check } from 'lucide-react'
+import SEO from '@/components/SEO'
 
 export default function CraftsmanshipPage() {
   const { t } = useTranslation()
@@ -51,6 +52,7 @@ export default function CraftsmanshipPage() {
 
   return (
     <div className="min-h-screen">
+      <SEO title={t('craftsmanship.heading')} description={t('craftsmanship.intro')} />
       <section className="py-24 md:py-32 bg-[#F5F0E8]">
         <div className="mx-auto max-w-[1440px] px-8">
           <div className="text-center mb-16">

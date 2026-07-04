@@ -5,6 +5,7 @@ import { productApi, categoryApi, Category, Product } from '@/services/api'
 import { useTranslation } from '@/i18n'
 import FilterBar from '@/components/products/FilterBar'
 import ProductGrid from '@/components/products/ProductGrid'
+import SEO from '@/components/SEO'
 
 export default function ProductListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -110,6 +111,7 @@ export default function ProductListPage() {
 
   return (
     <main className="min-h-screen bg-[#FAF7F2]">
+      <SEO title={t('products.title')} description={t('products.description')} />
       <div className="pt-20 pb-8 sm:pt-24 sm:pb-16 bg-[#F5F0E8]">
         <div className="mx-auto max-w-[1440px] px-8 text-center">
           {initialSearch ? (

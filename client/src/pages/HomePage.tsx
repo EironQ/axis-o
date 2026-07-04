@@ -5,10 +5,12 @@ import QualitySection from '@/components/home/QualitySection'
 import BestSellersSection from '@/components/home/BestSellersSection'
 import PracticalSection from '@/components/home/PracticalSection'
 import BrandStorySection from '@/components/home/BrandStorySection'
+import SEO from '@/components/SEO'
 
 export default function HomePage() {
   return (
     <main>
+      <SEO />
       <HeroSection />
       <BestSellersSection />
       <CollectionSection />
