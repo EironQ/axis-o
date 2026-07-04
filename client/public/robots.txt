@@ -1,0 +1,26 @@
+User-agent: *
+Allow: /
+
+# 禁止爬取用户相关页面
+Disallow: /zh/cart
+Disallow: /en/cart
+Disallow: /zh/checkout
+Disallow: /en/checkout
+Disallow: /zh/orders
+Disallow: /en/orders
+Disallow: /zh/returns
+Disallow: /en/returns
+Disallow: /zh/login
+Disallow: /en/login
+Disallow: /zh/register
+Disallow: /en/register
+Disallow: /zh/profile
+Disallow: /en/profile
+Disallow: /zh/addresses
+Disallow: /en/addresses
+
+# 禁止爬取后台管理
+Disallow: /admin/
+
+# 网站地图
+Sitemap: https://www.axiso.cn/sitemap.xml
