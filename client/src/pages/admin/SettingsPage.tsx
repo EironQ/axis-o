@@ -105,6 +105,8 @@ const tabConfigs: TabConfig[] = [
       { key: 'meta_title_zh', label: 'SEO 标题 (中文)', type: 'text', placeholder: 'AXIS O - 奢华皮具' },
       { key: 'meta_description_en', label: 'SEO 描述 (英文)', type: 'text', placeholder: 'Premium handcrafted leather bags...' },
       { key: 'meta_description_zh', label: 'SEO 描述 (中文)', type: 'text', placeholder: '匠心打造的高端皮革手袋与配饰' },
+      { key: 'meta_keywords_en', label: 'SEO 关键词 (英文)', type: 'text', placeholder: 'leather bags, handbags, luxury accessories' },
+      { key: 'meta_keywords_zh', label: 'SEO 关键词 (中文)', type: 'text', placeholder: '皮具, 手袋, 包包, 奢侈品, 匠心' },
       { key: 'google_analytics_id', label: 'Google Analytics ID', type: 'text', placeholder: 'G-XXXXXXXXXX' },
     ],
   },

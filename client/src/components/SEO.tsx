@@ -19,9 +19,11 @@ export default function SEO({ title, description, keywords, image, url }: SEOPro
 
   const siteTitle = lang === 'zh' ? seo.meta_title_zh : seo.meta_title_en
   const siteDescription = lang === 'zh' ? seo.meta_description_zh : seo.meta_description_en
+  const siteKeywords = lang === 'zh' ? seo.meta_keywords_zh : seo.meta_keywords_en
 
   const fullTitle = title ? `${title} | ${siteTitle}` : siteTitle
   const metaDescription = description || siteDescription
+  const metaKeywords = keywords || siteKeywords
   const canonicalUrl = url ? `${SITE_URL}${url}` : `${SITE_URL}${window.location.pathname}`
   const ogImage = image || `${SITE_URL}/favicon.svg`
 
@@ -29,7 +31,7 @@ export default function SEO({ title, description, keywords, image, url }: SEOPro
     <Helmet>
       <title>{fullTitle}</title>
       <meta name="description" content={metaDescription} />
-      {keywords && <meta name="keywords" content={keywords} />}
+      <meta name="keywords" content={metaKeywords} />
       <link rel="canonical" href={canonicalUrl} />
 
       {/* Open Graph */}

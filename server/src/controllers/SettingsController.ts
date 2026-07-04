@@ -45,6 +45,8 @@ const DEFAULT_SETTINGS: Record<string, { value: string; group: string; descripti
   meta_title_zh: { value: 'AXIS O - 奢华皮具', group: 'seo', description: 'SEO标题(中文)' },
   meta_description_en: { value: 'Premium handcrafted leather bags and accessories', group: 'seo', description: 'SEO描述(英文)' },
   meta_description_zh: { value: '匠心打造的高端皮革手袋与配饰', group: 'seo', description: 'SEO描述(中文)' },
+  meta_keywords_en: { value: 'leather bags, handbags, luxury accessories, Italian craftsmanship', group: 'seo', description: 'SEO关键词(英文)' },
+  meta_keywords_zh: { value: '皮具, 手袋, 包包, 奢侈品, 意大利, 匠心, 极简设计', group: 'seo', description: 'SEO关键词(中文)' },
   google_analytics_id: { value: '', group: 'seo', description: 'Google Analytics ID' },
 }
 

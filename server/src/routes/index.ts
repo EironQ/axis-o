@@ -66,6 +66,8 @@ router.get('/settings/public', async (_req, res) => {
       meta_title_zh: allSettings.meta_title_zh || 'AXIS O - 奢华皮具',
       meta_description_en: allSettings.meta_description_en || 'Premium handcrafted leather bags and accessories',
       meta_description_zh: allSettings.meta_description_zh || '匠心打造的高端皮革手袋与配饰',
+      meta_keywords_en: allSettings.meta_keywords_en || 'leather bags, handbags, luxury accessories, Italian craftsmanship',
+      meta_keywords_zh: allSettings.meta_keywords_zh || '皮具, 手袋, 包包, 奢侈品, 意大利, 匠心, 极简设计',
       google_analytics_id: allSettings.google_analytics_id || '',
     }
 
