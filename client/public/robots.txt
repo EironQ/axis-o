@@ -23,4 +23,4 @@ Disallow: /en/addresses
 Disallow: /admin/
 
 # 网站地图
-Sitemap: https://www.axiso.cn/sitemap.xml
+Sitemap: https://www.axiso.cn/api/sitemap.xml
