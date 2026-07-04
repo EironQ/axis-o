@@ -45,8 +45,8 @@ export default function SEO({ title, description, keywords, image, url }: SEOPro
       <meta name="twitter:image" content={ogImage} />
 
       {/* Alternate language */}
-      <link rel="alternate" hreflang="zh" href={canonicalUrl.replace('/en/', '/zh/')} />
-      <link rel="alternate" hreflang="en" href={canonicalUrl.replace('/zh/', '/en/')} />
+      <link rel="alternate" hrefLang="zh" href={canonicalUrl.replace('/en/', '/zh/')} />
+      <link rel="alternate" hrefLang="en" href={canonicalUrl.replace('/zh/', '/en/')} />
     </Helmet>
   )
 }

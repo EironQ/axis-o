@@ -39,6 +39,12 @@ export interface Product {
   metaDescriptionZh?: string | null
   createdAt?: string
   updatedAt?: string
+  metaTitleZh?: string
+  metaTitleEn?: string
+  metaDescriptionZh?: string
+  metaDescriptionEn?: string
+  metaKeywordsZh?: string
+  metaKeywordsEn?: string
 }
 
 export interface CartItem {
@@ -55,4 +61,12 @@ export interface CollectionCard {
   image: string
   link: string
   series: string
+}
+
+// SEO fields for Product
+export interface ProductSEO {
+  metaTitleZh?: string
+  metaTitleEn?: string
+  metaDescriptionZh?: string
+  metaDescriptionEn?: string
 }
