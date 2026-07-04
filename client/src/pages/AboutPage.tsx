@@ -176,7 +176,7 @@ export default function AboutPage() {
 
   return (
     <main className="min-h-screen bg-[#FAF7F2]">
-      <SEO title={t({ zh: '关于我们', en: 'About Us' })} description={t({ zh: '了解AXIS O品牌故事、工艺传承与设计理念', en: 'Discover AXIS O brand story, craftsmanship heritage and design philosophy' })} />
+      <SEO title={t({ zh: 'AXIS O 品牌故事', en: 'AXIS O Brand Story' })} description={t({ zh: '十年匠心，一只好包的轴心', en: 'A decade of craftsmanship, the axis of a great bag' })} />
       <div className="pt-28 pb-20 md:pb-28 bg-[#F5F0E8]">
         <div className="mx-auto max-w-[1440px] px-8 text-center">
           <p className="text-xs tracking-[0.3em] uppercase text-[#C89460] mb-6">

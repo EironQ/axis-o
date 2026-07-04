@@ -2,12 +2,13 @@ import { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { productApi, categoryApi, Category, Product } from '@/services/api'
-import { useTranslation } from '@/i18n'
+import { useTranslation, useLanguage } from '@/i18n'
 import FilterBar from '@/components/products/FilterBar'
 import ProductGrid from '@/components/products/ProductGrid'
 import SEO from '@/components/SEO'
 
 export default function ProductListPage() {
+  const { lang } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialSeries = searchParams.get('series') || ''
   const initialSearch = searchParams.get('search') || ''
@@ -111,7 +112,7 @@ export default function ProductListPage() {
 
   return (
     <main className="min-h-screen bg-[#FAF7F2]">
-      <SEO title={t('products.title')} description={t('products.description')} />
+      <SEO title={lang === 'zh' ? 'AXIS O 全系列包袋' : 'AXIS O Full Collection'} description={lang === 'zh' ? '奢享/经典通勤手作皮革包，甄选意大利植鞣牛皮' : 'Handcrafted leather bags for luxury & everyday commute'} />
       <div className="pt-20 pb-8 sm:pt-24 sm:pb-16 bg-[#F5F0E8]">
         <div className="mx-auto max-w-[1440px] px-8 text-center">
           {initialSearch ? (
