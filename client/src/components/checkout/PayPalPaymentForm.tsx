@@ -282,6 +282,8 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
     currency: props.currency.toUpperCase(),
     intent: 'capture',
     components: 'buttons,card-fields',
+    dataNamespace: 'paypal',
+    enableFunding: 'card',
   }
 
   return (
