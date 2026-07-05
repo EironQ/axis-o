@@ -118,8 +118,31 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
           </span>
         </div>
 
-        <PayPalScriptProvider options={paypalOptions}>
+        <PayPalScriptProvider
+          options={paypalOptions}
+          deferLoading={false}
+          onScriptReady={() => {
+            console.log('[PayPal] SDK loaded successfully')
+            setIsScriptLoaded(true)
+          }}
+          onScriptError={(err) => {
+            console.error('[PayPal] SDK load error:', err)
+            setScriptError('PayPal SDK failed to load')
+            setMessageType('error')
+            setMessage(t('payment.paypalLoadFailed'))
+            setShowRetry(true)
+          }}
+        >
           <div className="min-h-[150px]">
+            {!isScriptLoaded && !scriptError && (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#C89460] mr-3"></div>
+                <span className="text-sm text-[#3C2415]/60">Loading PayPal...</span>
+              </div>
+            )}
+            {scriptError && (
+              <div className="text-center py-8 text-red-600 text-sm">{scriptError}</div>
+            )}
             <PayPalButtons
               style={{
                 shape: 'rect',
@@ -129,7 +152,6 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
                 tagline: false,
               }}
               createOrder={async () => {
-                setIsScriptLoaded(true)
                 return props.paypalOrderId
               }}
               onApprove={handleApprove}
