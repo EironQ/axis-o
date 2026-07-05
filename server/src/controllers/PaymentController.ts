@@ -395,6 +395,10 @@ export const PaymentController = {
           res.status(404).json({ success: false, error: { code: 'PAYPAL_ORDER_NOT_FOUND', message: 'PayPal order not found or expired' } })
           return
         }
+        if (paypalError.message?.includes('UNPROCESSABLE_ENTITY') || paypalError.message?.includes('BUSINESS_VALIDATION')) {
+          res.status(422).json({ success: false, error: { code: 'PAYPAL_BUSINESS_ERROR', message: 'PayPal payment validation failed. Please check payment method or use PayPal directly.' } })
+          return
+        }
         throw paypalError
       }
 

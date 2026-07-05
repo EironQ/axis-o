@@ -249,6 +249,7 @@
     "payWithPayPal": "使用 PayPal 支付",
     "paypalLoadFailed": "PayPal 加载失败",
     "cardNotAvailable": "信用卡支付暂不可用，请使用 PayPal 支付",
+    "cardPaymentFailed": "信用卡支付失败，请检查支付信息或切换到 PayPal 支付",
     "usePayPal": "使用 PayPal",
     "creditCard": "信用卡/借记卡",
     "cardNumber": "卡号",

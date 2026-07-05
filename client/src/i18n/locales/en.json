@@ -249,6 +249,7 @@
     "payWithPayPal": "Pay with PayPal",
     "paypalLoadFailed": "PayPal failed to load",
     "cardNotAvailable": "Credit card payment is not available, please use PayPal",
+    "cardPaymentFailed": "Credit card payment failed. Please check payment details or switch to PayPal.",
     "usePayPal": "Use PayPal",
     "creditCard": "Credit / Debit Card",
     "cardNumber": "Card Number",

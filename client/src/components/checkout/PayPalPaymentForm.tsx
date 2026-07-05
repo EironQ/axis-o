@@ -319,6 +319,11 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
         setMessageType('success')
         setMessage(t('payment.success'))
         props.onSuccess(response.data.captureId)
+      } else if (response.error?.code === 'PAYPAL_BUSINESS_ERROR') {
+        setMessageType('error')
+        setMessage(t('payment.cardPaymentFailed'))
+        setShowRetry(true)
+        props.onError(response.error.message)
       } else {
         setMessageType('error')
         setMessage(t('payment.captureFailed'))
