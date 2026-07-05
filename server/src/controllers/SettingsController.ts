@@ -71,6 +71,7 @@ async function ensureDefaults() {
 export const SettingsController = {
   getAll: async (req: Request, res: Response) => {
     try {
+      console.log('[SettingsController] getAll called')
       await ensureDefaults()
 
       const { group } = req.query as any

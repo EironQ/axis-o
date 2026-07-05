@@ -133,7 +133,19 @@ export default function SettingsPage() {
     setIsLoading(true)
     try {
       const response = await fetch('/api/admin/settings', { headers: getAuthHeaders() })
-      const result = await response.json()
+      const text = await response.text()
+      
+      let result
+      try {
+        result = JSON.parse(text)
+      } catch {
+        throw new Error('服务器返回无效的响应格式')
+      }
+      
+      if (!response.ok) {
+        throw new Error(result.error?.message || `请求失败: ${response.status}`)
+      }
+      
       if (result.success) {
         setSettings(result.data.settings)
         setGrouped(result.data.grouped)
@@ -142,6 +154,8 @@ export default function SettingsPage() {
           flatValues[s.key] = s.value
         })
         setFormValues(flatValues)
+      } else {
+        throw new Error(result.error?.message || '加载设置失败')
       }
     } catch (err: any) {
       showToastMessage('error', err.message || '加载设置失败')
@@ -209,12 +223,24 @@ export default function SettingsPage() {
         headers: getAuthHeaders(),
         body: JSON.stringify(updates),
       })
-      const result = await response.json()
+      const text = await response.text()
+      
+      let result
+      try {
+        result = JSON.parse(text)
+      } catch {
+        throw new Error('服务器返回无效的响应格式')
+      }
+      
+      if (!response.ok) {
+        throw new Error(result.error?.message || `请求失败: ${response.status}`)
+      }
+      
       if (result.success) {
         showToastMessage('success', '设置保存成功')
         loadSettings()
       } else {
-        showToastMessage('error', result.error?.message || '保存失败')
+        throw new Error(result.error?.message || '保存失败')
       }
     } catch (err: any) {
       showToastMessage('error', err.message || '保存失败')
