@@ -391,11 +391,12 @@ export const PaymentController = {
       try {
         captureResult = await PayPalService.captureOrder(paypalOrderId)
       } catch (paypalError: any) {
-        if (paypalError.message?.includes('RESOURCE_NOT_FOUND') || paypalError.message?.includes('ORDER_NOT_FOUND')) {
+        const errStr = paypalError.message || ''
+        if (errStr.includes('RESOURCE_NOT_FOUND') || errStr.includes('ORDER_NOT_FOUND') || errStr.includes('INVALID_RESOURCE_ID')) {
           res.status(404).json({ success: false, error: { code: 'PAYPAL_ORDER_NOT_FOUND', message: 'PayPal order not found or expired' } })
           return
         }
-        if (paypalError.message?.includes('UNPROCESSABLE_ENTITY') || paypalError.message?.includes('BUSINESS_VALIDATION')) {
+        if (errStr.includes('UNPROCESSABLE_ENTITY') || errStr.includes('BUSINESS_VALIDATION') || errStr.includes('REQUESTED_ACTION_NOT_SUPPORTED')) {
           res.status(422).json({ success: false, error: { code: 'PAYPAL_BUSINESS_ERROR', message: 'PayPal payment validation failed. Please check payment method or use PayPal directly.' } })
           return
         }

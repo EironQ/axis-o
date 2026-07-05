@@ -297,9 +297,11 @@ export class PayPalService {
 
     if (!captureResponse.ok) {
       const errorData = await captureResponse.json().catch(() => ({ details: [] }))
+      const issue = errorData.details?.[0]?.issue || ''
       const errorMessage = errorData.details?.[0]?.description || errorData.message || 'Unknown error'
-      console.error(`[PayPal] captureOrder failed: ${captureResponse.status} - ${errorMessage}`)
-      throw new Error(`PayPal 支付捕获失败: ${errorMessage}`)
+      console.error(`[PayPal] captureOrder failed: ${captureResponse.status} - ${issue} - ${errorMessage}`, JSON.stringify(errorData))
+      const fullError = issue ? `${issue}: ${errorMessage}` : errorMessage
+      throw new Error(`PayPal 支付捕获失败: ${fullError}`)
     }
 
     const data = (await captureResponse.json()) as PayPalCaptureResponse
@@ -327,9 +329,11 @@ export class PayPalService {
 
     if (!getResponse.ok) {
       const errorData = await getResponse.json().catch(() => ({ details: [] }))
+      const issue = errorData.details?.[0]?.issue || ''
       const errorMessage = errorData.details?.[0]?.description || errorData.message || 'Unknown error'
-      console.error(`[PayPal] getOrder failed: ${getResponse.status} - ${errorMessage}`)
-      throw new Error(`PayPal 查询订单失败: ${errorMessage}`)
+      console.error(`[PayPal] getOrder failed: ${getResponse.status} - ${issue} - ${errorMessage}`, JSON.stringify(errorData))
+      const fullError = issue ? `${issue}: ${errorMessage}` : errorMessage
+      throw new Error(`PayPal 查询订单失败: ${fullError}`)
     }
 
     const data = (await getResponse.json()) as PayPalOrderResponse
