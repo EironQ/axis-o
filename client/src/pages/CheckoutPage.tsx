@@ -806,16 +806,14 @@ export default function CheckoutPage() {
                   ].map((provider) => (
                     <label
                       key={provider.value}
-                      className={`flex items-center justify-center p-3 rounded-lg cursor-pointer transition-all ${
+                      className={`flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all ${
                         paymentProvider === provider.value
-                          ? 'bg-[#FFC439]'
-                          : 'bg-[#FFC439]/80 hover:bg-[#FFC439]'
+                          ? 'border-[#C89460] bg-[#C89460]/5'
+                          : 'border-[#3C2415]/10 hover:border-[#3C2415]/30'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-[#003087] font-bold text-lg">Pay</span>
-                        <span className="text-[#009BE1] font-bold text-lg">Pal</span>
-                      </div>
+                      <provider.Icon className="w-5 h-5 text-[#C89460]" />
+                      <span className="text-sm font-medium text-[#3C2415]">{provider.label}</span>
                       <input
                         type="radio"
                         name="paymentProvider"
