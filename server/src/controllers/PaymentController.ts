@@ -875,7 +875,16 @@ export const PaymentController = {
         } catch (paypalError) {
           console.error('Failed to sync PayPal status:', paypalError)
           const errorMsg = paypalError instanceof Error ? paypalError.message : 'Unknown error'
-          message = `Sync failed: ${errorMsg}`
+          if (errorMsg.includes('INVALID_RESOURCE_ID') || errorMsg.includes('RESOURCE_NOT_FOUND') || errorMsg.includes('ORDER_NOT_FOUND')) {
+            message = 'PAYPAL_ORDER_EXPIRED'
+            await db
+              .update(payments)
+              .set({ status: 'failed', updatedAt: new Date() })
+              .where(eq(payments.id, payment.id))
+            newPaymentStatus = 'failed'
+          } else {
+            message = `Sync failed: ${errorMsg}`
+          }
         }
       } else if (!payment.transactionId) {
         message = 'No PayPal transaction ID found'

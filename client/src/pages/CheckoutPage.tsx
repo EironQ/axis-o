@@ -6,20 +6,22 @@ import { useSettings } from '@/context/SettingsContext'
 import { useTranslation, useLanguage } from '@/i18n'
 import { orderApi, addressApi, paymentApi, CreateOrderRequest, UserAddress, PaymentIntentResponse } from '@/services/api'
 import Button from '@/components/ui/Button'
-import PayPalPaymentForm from '@/components/checkout/PayPalPaymentForm'
+import PayPalPaymentForm, { translatePayPalError } from '@/components/checkout/PayPalPaymentForm'
 import RedirectPaymentForm from '@/components/checkout/RedirectPaymentForm'
 
 class CheckoutErrorBoundary extends Component<
   { children: React.ReactNode; onBack: () => void; onRetry?: () => void; t: (key: string, params?: Record<string, string | number>) => string },
-  { hasError: boolean; errorMessage: string }
+  { hasError: boolean; errorMessage: string; friendlyMessage: string }
 > {
   constructor(props: { children: React.ReactNode; onBack: () => void; onRetry?: () => void; t: (key: string, params?: Record<string, string | number>) => string }) {
     super(props)
-    this.state = { hasError: false, errorMessage: '' }
+    this.state = { hasError: false, errorMessage: '', friendlyMessage: '' }
   }
 
   static getDerivedStateFromError(error: Error) {
-    return { hasError: true, errorMessage: error.message || 'Page failed to load' }
+    const rawMsg = error.message || 'Page failed to load'
+    const friendlyMsg = translatePayPalError(rawMsg, (key: string) => key)
+    return { hasError: true, errorMessage: rawMsg, friendlyMessage: friendlyMsg }
   }
 
   render() {
@@ -32,11 +34,11 @@ class CheckoutErrorBoundary extends Component<
             </svg>
           </div>
           <p className="text-sm text-red-600 mb-2">{this.props.t('checkout.paymentLoadError')}</p>
-          <p className="text-xs text-red-400 mb-4">{this.state.errorMessage}</p>
+          <p className="text-xs text-red-400 mb-4">{this.state.friendlyMessage || this.props.t('payment.processFailed')}</p>
           <div className="flex gap-3 justify-center">
             <Button variant="outline" size="sm" onClick={this.props.onBack}>{this.props.t('checkout.backToOrder')}</Button>
             {this.props.onRetry && (
-              <Button variant="primary" size="sm" onClick={() => { this.setState({ hasError: false, errorMessage: '' }); this.props.onRetry?.() }}>
+              <Button variant="primary" size="sm" onClick={() => { this.setState({ hasError: false, errorMessage: '', friendlyMessage: '' }); this.props.onRetry?.() }}>
                 {this.props.t('common.retry')}
               </Button>
             )}

@@ -115,7 +115,14 @@ export default function OrderDetailPage() {
             return true
           }
         } else if (syncResult.data?.message) {
-          setSyncMessage(syncResult.data.message)
+          const msg = syncResult.data.message
+          if (msg === 'PAYPAL_ORDER_EXPIRED') {
+            setSyncMessage(t('payment.orderExpired'))
+          } else if (msg.startsWith('Sync failed:')) {
+            setSyncMessage(t('order.syncFailed'))
+          } else {
+            setSyncMessage(msg)
+          }
           setTimeout(() => setSyncMessage(null), 5000)
         } else {
           setSyncMessage(t('order.syncFailed'))

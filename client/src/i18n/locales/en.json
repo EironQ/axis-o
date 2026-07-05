@@ -259,6 +259,8 @@
     "cardPaymentFailed": "Credit card payment failed. Please check payment details or switch to PayPal.",
     "usePayPal": "Use PayPal",
     "creditCard": "Credit / Debit Card",
+    "orderRefreshed": "Order refreshed, please submit payment again",
+    "failedToRefresh": "Failed to refresh order, please try again later",
     "cardNumber": "Card Number",
     "cardholderName": "Cardholder Name",
     "expiry": "Expiry",

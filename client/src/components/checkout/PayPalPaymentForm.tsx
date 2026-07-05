@@ -16,7 +16,27 @@ import { useTranslation } from '@/i18n'
 
 const FALLBACK_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID || ''
 
-function translatePayPalError(errorMsg: string, t: any): string {
+export function extractErrorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    return err.message || ''
+  }
+  if (typeof err === 'string') {
+    return err
+  }
+  if (typeof err === 'object' && err !== null) {
+    const msg = (err as any).message
+    if (typeof msg === 'string') return msg
+    try {
+      return JSON.stringify(err)
+    } catch {
+      return String(err)
+    }
+  }
+  return String(err)
+}
+
+export function translatePayPalError(err: unknown, t: any): string {
+  const errorMsg = extractErrorMessage(err)
   if (!errorMsg) return t('payment.processFailed')
   const lower = errorMsg.toLowerCase()
   if (lower.includes('resource_not_found') || lower.includes('order_not_found') || lower.includes('invalid_resource_id')) {
@@ -71,7 +91,7 @@ function formatDisplayAmount(amount: number, currency: string): string {
   return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
 }
 
-function SubmitCardFields({ isProcessing, onError, t }: { isProcessing: boolean; onError: (err: string) => void; t: any }) {
+function SubmitCardFields({ isProcessing, onError, t, onSubmitError }: { isProcessing: boolean; onError: (err: string) => void; t: any; onSubmitError: (err: string) => void }) {
   const { cardFieldsForm } = usePayPalCardFields()
 
   const handleClick = async () => {
@@ -80,9 +100,10 @@ function SubmitCardFields({ isProcessing, onError, t }: { isProcessing: boolean;
       const result = await cardFieldsForm.submit()
       console.log('[PayPal] Card fields submit result:', result)
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Card payment failed'
+      const friendlyMsg = translatePayPalError(err, t)
       console.error('[PayPal] Card fields submit error:', err)
-      onError(errorMsg)
+      onSubmitError(friendlyMsg)
+      onError(friendlyMsg)
     }
   }
 
@@ -191,8 +212,7 @@ function PayPalContent(props: PayPalContentProps) {
           onApprove={(data) => Promise.resolve(props.onApprove(data))}
           onError={(err: Record<string, unknown>) => {
             console.error('[PayPal] Card fields error:', err)
-            const rawMsg = typeof err?.message === 'string' ? err.message : ''
-            const errorMsg = translatePayPalError(rawMsg, props.t)
+            const errorMsg = translatePayPalError(err, props.t)
             props.setMessageType('error')
             props.setMessage(errorMsg)
             props.setShowRetry(true)
@@ -253,9 +273,12 @@ function PayPalContent(props: PayPalContentProps) {
               <SubmitCardFields
                 isProcessing={props.isProcessing}
                 onError={(err) => {
+                  props.onError(err)
+                }}
+                onSubmitError={(err) => {
                   props.setMessageType('error')
                   props.setMessage(err)
-                  props.onError(err)
+                  props.setShowRetry(true)
                 }}
                 t={props.t}
               />
@@ -278,8 +301,7 @@ function PayPalContent(props: PayPalContentProps) {
             onApprove={(data) => Promise.resolve(props.onApprove(data))}
             onError={(err: Record<string, unknown>) => {
               console.error('PayPal buttons error:', err)
-              const rawMsg = typeof err?.message === 'string' ? err.message : ''
-              const errorMsg = translatePayPalError(rawMsg, props.t)
+              const errorMsg = translatePayPalError(err, props.t)
               props.setMessageType('error')
               props.setMessage(errorMsg)
               props.setShowRetry(true)
@@ -375,8 +397,8 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
         props.onError(friendlyMsg)
       }
     } catch (err: unknown) {
-      const rawMsg = err instanceof Error ? err.message : ''
-      const friendlyMsg = translatePayPalError(rawMsg, t)
+      const friendlyMsg = translatePayPalError(err, t)
+      const rawMsg = extractErrorMessage(err)
       if (rawMsg.includes('RESOURCE_NOT_FOUND') || rawMsg.includes('ORDER_NOT_FOUND')) {
         const refreshedOrderId = await refreshPayPalOrder()
         if (refreshedOrderId) {
@@ -403,10 +425,29 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
     }
   }
 
-  const handleRetry = () => {
+  const handleRetry = async () => {
     retryCountRef.current += 1
     setMessage(null)
     setShowRetry(false)
+    setIsProcessing(true)
+    try {
+      const refreshedOrderId = await refreshPayPalOrder()
+      if (refreshedOrderId) {
+        setMessageType('success')
+        setMessage(t('payment.orderRefreshed'))
+      } else {
+        setMessageType('error')
+        setMessage(t('payment.failedToRefresh'))
+        setShowRetry(true)
+      }
+    } catch (err) {
+      console.error('[PayPal] Failed to refresh order on retry:', err)
+      setMessageType('error')
+      setMessage(t('payment.failedToRefresh'))
+      setShowRetry(true)
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const paypalOptions: ReactPayPalScriptOptions = {
