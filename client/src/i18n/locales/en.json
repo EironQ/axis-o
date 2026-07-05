@@ -248,6 +248,8 @@
     "paypalUnavailable": "PayPal service unavailable",
     "payWithPayPal": "Pay with PayPal",
     "paypalLoadFailed": "PayPal failed to load",
+    "cardNotAvailable": "Credit card payment is not available, please use PayPal",
+    "usePayPal": "Use PayPal",
     "creditCard": "Credit / Debit Card",
     "cardNumber": "Card Number",
     "cardholderName": "Cardholder Name",

@@ -86,8 +86,32 @@ interface PayPalContentProps {
 
 function PayPalContent(props: PayPalContentProps) {
   const [{ isResolved, isRejected }] = usePayPalScriptReducer()
+  const [cardFieldsEligible, setCardFieldsEligible] = useState<boolean | null>(null)
 
   const createOrder = async () => props.paypalOrderId
+
+  useEffect(() => {
+    const checkEligibility = async () => {
+      try {
+        const paypalNamespace = (window as any).paypal
+        if (paypalNamespace && paypalNamespace.CardFields) {
+          const instance = await paypalNamespace.CardFields({
+            createOrder: createOrder,
+          })
+          setCardFieldsEligible(instance.isEligible())
+          instance.teardown?.()
+        } else {
+          setCardFieldsEligible(false)
+        }
+      } catch {
+        setCardFieldsEligible(false)
+      }
+    }
+
+    if (isResolved) {
+      checkEligibility()
+    }
+  }, [isResolved, createOrder])
 
   if (isRejected) {
     return (
@@ -106,6 +130,20 @@ function PayPalContent(props: PayPalContentProps) {
     )
   }
 
+  if (props.paymentTab === 'card' && cardFieldsEligible === false) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-sm text-[#3C2415]/60 mb-4">{props.t('payment.cardNotAvailable')}</p>
+        <Button variant="outline" size="sm" onClick={() => {
+          props.setMessage(null)
+          props.setShowRetry(false)
+        }}>
+          {props.t('payment.usePayPal')}
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <>
       {props.paymentTab === 'card' && (
@@ -115,8 +153,13 @@ function PayPalContent(props: PayPalContentProps) {
           onError={(err: Record<string, unknown>) => {
             console.error('[PayPal] Card fields error:', err)
             const errorMsg = typeof err?.message === 'string' ? err.message : props.t('payment.processFailed')
-            props.setMessageType('error')
-            props.setMessage(errorMsg)
+            if (errorMsg.includes('not eligible')) {
+              props.setMessageType('error')
+              props.setMessage(props.t('payment.cardNotAvailable'))
+            } else {
+              props.setMessageType('error')
+              props.setMessage(errorMsg)
+            }
             props.setShowRetry(true)
             props.onError(errorMsg)
           }}
