@@ -8,6 +8,7 @@ import {
   PayPalExpiryField,
   PayPalCVVField,
   usePayPalCardFields,
+  usePayPalScriptReducer,
   ReactPayPalScriptOptions,
 } from '@paypal/react-paypal-js'
 import Button from '@/components/ui/Button'
@@ -31,14 +32,13 @@ function formatDisplayAmount(amount: number, currency: string): string {
   return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
 }
 
-function SubmitCardFields({ isProcessing, onError }: { isProcessing: boolean; onError: (err: string) => void }) {
-  const { cardFields } = usePayPalCardFields()
-  const { t } = useTranslation()
+function SubmitCardFields({ isProcessing, onError, t }: { isProcessing: boolean; onError: (err: string) => void; t: any }) {
+  const { cardFieldsForm } = usePayPalCardFields()
 
   const handleClick = async () => {
-    if (!cardFields) return
+    if (!cardFieldsForm) return
     try {
-      const result = await cardFields.submit()
+      const result = await cardFieldsForm.submit()
       console.log('[PayPal] Card fields submit result:', result)
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Card payment failed'
@@ -54,7 +54,7 @@ function SubmitCardFields({ isProcessing, onError }: { isProcessing: boolean; on
       size="lg"
       className="w-full"
       onClick={handleClick}
-      disabled={isProcessing || !cardFields}
+      disabled={isProcessing || !cardFieldsForm}
     >
       {isProcessing ? (
         <span className="flex items-center justify-center gap-2">
@@ -66,14 +66,165 @@ function SubmitCardFields({ isProcessing, onError }: { isProcessing: boolean; on
   )
 }
 
+interface PayPalContentProps {
+  t: any
+  lang: 'zh' | 'en'
+  paymentTab: 'card' | 'paypal'
+  isProcessing: boolean
+  paypalOrderId: string
+  orderId: string
+  amount: number
+  currency: string
+  onApprove: (data: { orderID: string }) => void
+  onError: (err: string) => void
+  onCancel: () => void
+  setIsProcessing: (value: boolean) => void
+  setMessage: (value: string | null) => void
+  setMessageType: (value: 'success' | 'info' | 'error') => void
+  setShowRetry: (value: boolean) => void
+}
+
+function PayPalContent(props: PayPalContentProps) {
+  const [{ isResolved, isRejected }] = usePayPalScriptReducer()
+
+  const createOrder = async () => props.paypalOrderId
+
+  if (isRejected) {
+    return (
+      <div className="text-center py-8 text-red-600 text-sm">
+        {props.t('payment.paypalLoadFailed')}
+      </div>
+    )
+  }
+
+  if (!isResolved) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#C89460] mr-3"></div>
+        <span className="text-sm text-[#3C2415]/60">Loading PayPal...</span>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      {props.paymentTab === 'card' && (
+        <PayPalCardFieldsProvider
+          createOrder={createOrder}
+          onApprove={(data) => Promise.resolve(props.onApprove(data))}
+          onError={(err: Record<string, unknown>) => {
+            console.error('[PayPal] Card fields error:', err)
+            const errorMsg = typeof err?.message === 'string' ? err.message : props.t('payment.processFailed')
+            props.setMessageType('error')
+            props.setMessage(errorMsg)
+            props.setShowRetry(true)
+            props.onError(errorMsg)
+          }}
+          style={{
+            input: {
+              fontSize: '14px',
+              fontFamily: 'inherit',
+              color: '#3C2415',
+              placeholderColor: '#3C241580',
+            },
+          }}
+        >
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <label className="block text-xs font-medium text-[#3C2415]/70">
+                {props.t('payment.cardNumber')}
+              </label>
+              <PayPalNumberField
+                style={{ input: { fontSize: '14px' } }}
+                placeholder="4111 1111 1111 1111"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-xs font-medium text-[#3C2415]/70">
+                {props.t('payment.cardholderName')}
+              </label>
+              <PayPalNameField
+                style={{ input: { fontSize: '14px' } }}
+                placeholder={props.lang === 'zh' ? '姓名' : 'Full Name'}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <label className="block text-xs font-medium text-[#3C2415]/70">
+                  {props.t('payment.expiry')}
+                </label>
+                <PayPalExpiryField
+                  style={{ input: { fontSize: '14px' } }}
+                  placeholder="MM/YY"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="block text-xs font-medium text-[#3C2415]/70">
+                  CVV
+                </label>
+                <PayPalCVVField
+                  style={{ input: { fontSize: '14px' } }}
+                  placeholder="123"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <SubmitCardFields
+                isProcessing={props.isProcessing}
+                onError={(err) => {
+                  props.setMessageType('error')
+                  props.setMessage(err)
+                  props.onError(err)
+                }}
+                t={props.t}
+              />
+            </div>
+          </div>
+        </PayPalCardFieldsProvider>
+      )}
+
+      {props.paymentTab === 'paypal' && (
+        <div className="min-h-[150px]">
+          <PayPalButtons
+            style={{
+              shape: 'rect',
+              layout: 'vertical',
+              color: 'gold',
+              label: 'pay',
+              tagline: false,
+            }}
+            createOrder={createOrder}
+            onApprove={(data) => Promise.resolve(props.onApprove(data))}
+            onError={(err: Record<string, unknown>) => {
+              console.error('PayPal buttons error:', err)
+              const errorMsg = typeof err?.message === 'string' ? err.message : props.t('payment.paypalLoadFailed')
+              props.setMessageType('error')
+              props.setMessage(errorMsg)
+              props.setShowRetry(true)
+              props.onError(errorMsg)
+            }}
+            onCancel={() => {
+              props.setMessageType('info')
+              props.setMessage(props.t('payment.cancelled'))
+              props.onCancel()
+            }}
+            disabled={props.isProcessing}
+          />
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
-  const { t } = useTranslation()
+  const { t, lang } = useTranslation()
   const [isProcessing, setIsProcessing] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [messageType, setMessageType] = useState<'success' | 'info' | 'error'>('info')
   const [showRetry, setShowRetry] = useState(false)
-  const [isScriptLoaded, setIsScriptLoaded] = useState(false)
-  const [scriptError, setScriptError] = useState<string | null>(null)
   const [paymentTab, setPaymentTab] = useState<'card' | 'paypal'>('card')
   const retryCountRef = useRef(0)
 
@@ -122,23 +273,9 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
 
   const handleRetry = () => {
     retryCountRef.current += 1
-    setScriptError(null)
-    setIsScriptLoaded(false)
     setMessage(null)
     setShowRetry(false)
   }
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!isScriptLoaded && !scriptError) {
-        setMessageType('error')
-        setMessage(t('payment.paypalLoadFailed'))
-        setShowRetry(true)
-      }
-    }, 15000)
-
-    return () => clearTimeout(timer)
-  }, [isScriptLoaded, scriptError, t])
 
   const paypalOptions: ReactPayPalScriptOptions = {
     clientId,
@@ -146,8 +283,6 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
     intent: 'capture',
     components: 'buttons,card-fields',
   }
-
-  const createOrder = async () => props.paypalOrderId
 
   return (
     <div className="space-y-6">
@@ -159,7 +294,6 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
           </span>
         </div>
 
-        {/* Tab switch */}
         <div className="flex border-b border-[#3C2415]/10 mb-6">
           <button
             type="button"
@@ -170,7 +304,7 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
             }`}
             onClick={() => setPaymentTab('card')}
           >
-            {t({ zh: '信用卡/借记卡', en: 'Credit / Debit Card' })}
+            {t('payment.creditCard')}
           </button>
           <button
             type="button"
@@ -188,137 +322,33 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
         <PayPalScriptProvider
           options={paypalOptions}
           deferLoading={false}
-          onScriptReady={() => {
-            console.log('[PayPal] SDK loaded successfully')
-            setIsScriptLoaded(true)
-          }}
-          onScriptError={(err) => {
-            console.error('[PayPal] SDK load error:', err)
-            setScriptError('PayPal SDK failed to load')
-            setMessageType('error')
-            setMessage(t('payment.paypalLoadFailed'))
-            setShowRetry(true)
-          }}
         >
-          {!isScriptLoaded && !scriptError && (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#C89460] mr-3"></div>
-              <span className="text-sm text-[#3C2415]/60">Loading PayPal...</span>
-            </div>
-          )}
-          {scriptError && (
-            <div className="text-center py-8 text-red-600 text-sm">{scriptError}</div>
-          )}
-
-          {/* Card Fields Tab */}
-          {paymentTab === 'card' && isScriptLoaded && (
-            <PayPalCardFieldsProvider
-              createOrder={createOrder}
-              onApprove={handleApprove}
-              onError={(err: Record<string, unknown>) => {
-                console.error('[PayPal] Card fields error:', err)
-                const errorMsg = typeof err?.message === 'string' ? err.message : t('payment.processFailed')
-                setMessageType('error')
-                setMessage(errorMsg)
-                setShowRetry(true)
-                props.onError(errorMsg)
-              }}
-              style={{
-                input: {
-                  fontSize: '14px',
-                  fontFamily: 'inherit',
-                  color: '#3C2415',
-                  placeholderColor: '#3C241580',
-                },
-              }}
-            >
-              <div className="space-y-4">
-                <div className="space-y-3">
-                  <label className="block text-xs font-medium text-[#3C2415]/70">
-                    {t({ zh: '卡号', en: 'Card Number' })}
-                  </label>
-                  <PayPalNumberField
-                    style={{ input: { fontSize: '14px' } }}
-                    placeholder="4111 1111 1111 1111"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <label className="block text-xs font-medium text-[#3C2415]/70">
-                    {t({ zh: '持卡人姓名', en: 'Cardholder Name' })}
-                  </label>
-                  <PayPalNameField
-                    style={{ input: { fontSize: '14px' } }}
-                    placeholder={t({ zh: '姓名', en: 'Full Name' })}
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <label className="block text-xs font-medium text-[#3C2415]/70">
-                      {t({ zh: '有效期', en: 'Expiry' })}
-                    </label>
-                    <PayPalExpiryField
-                      style={{ input: { fontSize: '14px' } }}
-                      placeholder="MM/YY"
-                    />
-                  </div>
-                  <div className="space-y-3">
-                    <label className="block text-xs font-medium text-[#3C2415]/70">
-                      CVV
-                    </label>
-                    <PayPalCVVField
-                      style={{ input: { fontSize: '14px' } }}
-                      placeholder="123"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <SubmitCardFields
-                    isProcessing={isProcessing}
-                    onError={(err) => {
-                      setMessageType('error')
-                      setMessage(err)
-                      props.onError(err)
-                    }}
-                  />
-                </div>
-              </div>
-            </PayPalCardFieldsProvider>
-          )}
-
-          {/* PayPal Button Tab */}
-          {paymentTab === 'paypal' && isScriptLoaded && (
-            <div className="min-h-[150px]">
-              <PayPalButtons
-                style={{
-                  shape: 'rect',
-                  layout: 'vertical',
-                  color: 'gold',
-                  label: 'pay',
-                  tagline: false,
-                }}
-                createOrder={createOrder}
-                onApprove={handleApprove}
-                onError={(err: Record<string, unknown>) => {
-                  console.error('PayPal buttons error:', err)
-                  const errorMsg = typeof err?.message === 'string' ? err.message : t('payment.paypalLoadFailed')
-                  setMessageType('error')
-                  setMessage(errorMsg)
-                  setShowRetry(true)
-                  props.onError(errorMsg)
-                }}
-                onCancel={() => {
-                  setMessageType('info')
-                  setMessage(t('payment.cancelled'))
-                  setShowRetry(false)
-                  props.onCancel()
-                }}
-                disabled={isProcessing}
-              />
-            </div>
-          )}
+          <PayPalContent
+            t={t}
+            lang={lang}
+            paymentTab={paymentTab}
+            isProcessing={isProcessing}
+            paypalOrderId={props.paypalOrderId}
+            orderId={props.orderId}
+            amount={props.amount}
+            currency={props.currency}
+            onApprove={handleApprove}
+            onError={(err) => {
+              setMessageType('error')
+              setMessage(err)
+              setShowRetry(true)
+              props.onError(err)
+            }}
+            onCancel={() => {
+              setMessageType('info')
+              setMessage(t('payment.cancelled'))
+              props.onCancel()
+            }}
+            setIsProcessing={setIsProcessing}
+            setMessage={setMessage}
+            setMessageType={setMessageType}
+            setShowRetry={setShowRetry}
+          />
         </PayPalScriptProvider>
 
         {message && (

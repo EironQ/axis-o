@@ -69,7 +69,7 @@ export default function ProductDetailPage() {
       <SEO
         title={lang === 'zh' ? (product.metaTitleZh || `${product.nameZh} - AXIS O 奢奢皮革包袋`) : (product.metaTitleEn || `${product.nameEn} - AXIS O Luxury Leather Bags`)}
         description={lang === 'zh' ? (product.metaDescriptionZh || product.descriptionZh) : (product.metaDescriptionEn || product.descriptionEn)}
-        image={product.images?.[0]}
+        image={typeof product.images?.[0] === 'string' ? product.images[0] : (product.images?.[0] as any)?.url}
         url={`/${lang}/products/${product.id}`}
       />
       <div className="mx-auto max-w-[1440px] px-8 pt-24 pb-6">

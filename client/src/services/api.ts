@@ -160,6 +160,10 @@ export interface Product {
   story?: string
   category?: string
   detailImages?: DetailImage[]
+  metaTitleZh?: string
+  metaTitleEn?: string
+  metaDescriptionZh?: string
+  metaDescriptionEn?: string
 }
 
 export interface ProductListResponse {

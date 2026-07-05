@@ -37,14 +37,10 @@ export interface Product {
   metaTitleZh?: string | null
   metaDescriptionEn?: string | null
   metaDescriptionZh?: string | null
-  createdAt?: string
-  updatedAt?: string
-  metaTitleZh?: string
-  metaTitleEn?: string
-  metaDescriptionZh?: string
-  metaDescriptionEn?: string
   metaKeywordsZh?: string
   metaKeywordsEn?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface CartItem {
