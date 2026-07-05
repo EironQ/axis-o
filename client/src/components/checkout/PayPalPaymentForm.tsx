@@ -99,7 +99,6 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
     currency: props.currency.toUpperCase(),
     intent: 'capture',
     components: 'buttons',
-    disableFunding: 'credit,card',
   }
 
   return (
