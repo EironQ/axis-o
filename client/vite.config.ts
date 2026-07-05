@@ -12,9 +12,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    // 跳过 TypeScript 检查
   },
   esbuild: {
-    // 忽略 TypeScript 错误
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
   },
 })
