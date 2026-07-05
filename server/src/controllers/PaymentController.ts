@@ -387,7 +387,16 @@ export const PaymentController = {
         return
       }
 
-      const captureResult = await PayPalService.captureOrder(paypalOrderId)
+      let captureResult
+      try {
+        captureResult = await PayPalService.captureOrder(paypalOrderId)
+      } catch (paypalError: any) {
+        if (paypalError.message?.includes('RESOURCE_NOT_FOUND') || paypalError.message?.includes('ORDER_NOT_FOUND')) {
+          res.status(404).json({ success: false, error: { code: 'PAYPAL_ORDER_NOT_FOUND', message: 'PayPal order not found or expired' } })
+          return
+        }
+        throw paypalError
+      }
 
       const paymentResult = await db
         .select({ id: payments.id, status: payments.status })

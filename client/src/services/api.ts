@@ -695,10 +695,14 @@ export interface PaymentIntentResponse {
 
 export interface PayPalCaptureResponse {
   success: boolean
-  data: {
+  data?: {
     orderId: string
     status: string
     captureId: string
+    message: string
+  }
+  error?: {
+    code: string
     message: string
   }
 }

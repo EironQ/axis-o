@@ -269,9 +269,24 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
   const [messageType, setMessageType] = useState<'success' | 'info' | 'error'>('info')
   const [showRetry, setShowRetry] = useState(false)
   const [paymentTab, setPaymentTab] = useState<'card' | 'paypal'>('card')
+  const [currentPaypalOrderId, setCurrentPaypalOrderId] = useState(props.paypalOrderId)
   const retryCountRef = useRef(0)
 
   const clientId = props.clientId || FALLBACK_CLIENT_ID
+
+  const refreshPayPalOrder = async () => {
+    try {
+      const { paymentApi } = await import('@/services/api')
+      const response = await paymentApi.createIntent(props.orderId, 'paypal')
+      if (response.success && response.data?.paypalOrderId) {
+        setCurrentPaypalOrderId(response.data.paypalOrderId)
+        return response.data.paypalOrderId
+      }
+    } catch (err) {
+      console.error('[PayPal] Failed to refresh order:', err)
+    }
+    return null
+  }
 
   if (!clientId) {
     return (
@@ -291,7 +306,14 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
 
     try {
       const { paymentApi } = await import('@/services/api')
-      const response = await paymentApi.capturePayPal(props.orderId, data.orderID)
+      let response = await paymentApi.capturePayPal(props.orderId, data.orderID)
+
+      if (!response.success && response.error?.code === 'PAYPAL_ORDER_NOT_FOUND') {
+        const refreshedOrderId = await refreshPayPalOrder()
+        if (refreshedOrderId) {
+          response = await paymentApi.capturePayPal(props.orderId, refreshedOrderId)
+        }
+      }
 
       if (response.success) {
         setMessageType('success')
@@ -305,6 +327,23 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : t('payment.processFailed')
+      if (errorMsg.includes('RESOURCE_NOT_FOUND') || errorMsg.includes('ORDER_NOT_FOUND')) {
+        const refreshedOrderId = await refreshPayPalOrder()
+        if (refreshedOrderId) {
+          try {
+            const { paymentApi } = await import('@/services/api')
+            const response = await paymentApi.capturePayPal(props.orderId, refreshedOrderId)
+            if (response.success) {
+              setMessageType('success')
+              setMessage(t('payment.success'))
+              props.onSuccess(response.data.captureId)
+              return
+            }
+          } catch (refreshErr) {
+            console.error('[PayPal] Retry capture after refresh failed:', refreshErr)
+          }
+        }
+      }
       setMessageType('error')
       setMessage(errorMsg)
       setShowRetry(true)
