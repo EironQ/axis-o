@@ -806,9 +806,9 @@ export default function CheckoutPage() {
                   ].map((provider) => (
                     <label
                       key={provider.value}
-                      className={`flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all ${
+                      className={`flex items-center justify-center gap-2 p-4 border rounded-lg cursor-pointer transition-all ${
                         paymentProvider === provider.value
-                          ? 'border-[#C89460] bg-[#C89460]/5'
+                          ? 'border-[#C89460] bg-[#FFF9F5]'
                           : 'border-[#3C2415]/10 hover:border-[#3C2415]/30'
                       }`}
                     >
