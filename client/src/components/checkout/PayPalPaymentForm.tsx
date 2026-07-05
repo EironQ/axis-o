@@ -16,6 +16,45 @@ import { useTranslation } from '@/i18n'
 
 const FALLBACK_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID || ''
 
+function translatePayPalError(errorMsg: string, t: any): string {
+  if (!errorMsg) return t('payment.processFailed')
+  const lower = errorMsg.toLowerCase()
+  if (lower.includes('resource_not_found') || lower.includes('order_not_found') || lower.includes('invalid_resource_id')) {
+    return t('payment.orderExpired')
+  }
+  if (lower.includes('unprocessable_entity') || lower.includes('business_validation') || lower.includes('requested_action_not_supported')) {
+    return t('payment.cardPaymentFailed')
+  }
+  if (lower.includes('not eligible')) {
+    return t('payment.cardNotAvailable')
+  }
+  if (lower.includes('authentication failed') || lower.includes('client authentication')) {
+    return t('payment.paypalAuthFailed')
+  }
+  if (lower.includes('instrument declined') || lower.includes('card declined')) {
+    return t('payment.cardDeclined')
+  }
+  if (lower.includes('insufficient funds')) {
+    return t('payment.insufficientFunds')
+  }
+  if (lower.includes('expired_card') || lower.includes('expiration date')) {
+    return t('payment.cardExpired')
+  }
+  if (lower.includes('invalid_number') || lower.includes('invalid card number')) {
+    return t('payment.invalidCardNumber')
+  }
+  if (lower.includes('timeout') || lower.includes('abort')) {
+    return t('payment.timeout')
+  }
+  if (lower.includes('cancelled')) {
+    return t('payment.cancelled')
+  }
+  if (lower.includes('capture failed') || lower.includes('capturefail')) {
+    return t('payment.captureFailed')
+  }
+  return t('payment.processFailed')
+}
+
 interface PayPalPaymentFormProps {
   clientId: string
   paypalOrderId: string
@@ -152,14 +191,10 @@ function PayPalContent(props: PayPalContentProps) {
           onApprove={(data) => Promise.resolve(props.onApprove(data))}
           onError={(err: Record<string, unknown>) => {
             console.error('[PayPal] Card fields error:', err)
-            const errorMsg = typeof err?.message === 'string' ? err.message : props.t('payment.processFailed')
-            if (errorMsg.includes('not eligible')) {
-              props.setMessageType('error')
-              props.setMessage(props.t('payment.cardNotAvailable'))
-            } else {
-              props.setMessageType('error')
-              props.setMessage(errorMsg)
-            }
+            const rawMsg = typeof err?.message === 'string' ? err.message : ''
+            const errorMsg = translatePayPalError(rawMsg, props.t)
+            props.setMessageType('error')
+            props.setMessage(errorMsg)
             props.setShowRetry(true)
             props.onError(errorMsg)
           }}
@@ -243,7 +278,8 @@ function PayPalContent(props: PayPalContentProps) {
             onApprove={(data) => Promise.resolve(props.onApprove(data))}
             onError={(err: Record<string, unknown>) => {
               console.error('PayPal buttons error:', err)
-              const errorMsg = typeof err?.message === 'string' ? err.message : props.t('payment.paypalLoadFailed')
+              const rawMsg = typeof err?.message === 'string' ? err.message : ''
+              const errorMsg = translatePayPalError(rawMsg, props.t)
               props.setMessageType('error')
               props.setMessage(errorMsg)
               props.setShowRetry(true)
@@ -319,20 +355,29 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
         setMessageType('success')
         setMessage(t('payment.success'))
         props.onSuccess(response.data.captureId)
+      } else if (response.error?.code === 'PAYPAL_ORDER_NOT_FOUND') {
+        const friendlyMsg = t('payment.orderExpired')
+        setMessageType('error')
+        setMessage(friendlyMsg)
+        setShowRetry(true)
+        props.onError(friendlyMsg)
       } else if (response.error?.code === 'PAYPAL_BUSINESS_ERROR') {
+        const friendlyMsg = t('payment.cardPaymentFailed')
         setMessageType('error')
-        setMessage(t('payment.cardPaymentFailed'))
+        setMessage(friendlyMsg)
         setShowRetry(true)
-        props.onError(response.error.message)
+        props.onError(friendlyMsg)
       } else {
+        const friendlyMsg = t('payment.captureFailed')
         setMessageType('error')
-        setMessage(t('payment.captureFailed'))
+        setMessage(friendlyMsg)
         setShowRetry(true)
-        props.onError(t('payment.captureFailed'))
+        props.onError(friendlyMsg)
       }
     } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : t('payment.processFailed')
-      if (errorMsg.includes('RESOURCE_NOT_FOUND') || errorMsg.includes('ORDER_NOT_FOUND')) {
+      const rawMsg = err instanceof Error ? err.message : ''
+      const friendlyMsg = translatePayPalError(rawMsg, t)
+      if (rawMsg.includes('RESOURCE_NOT_FOUND') || rawMsg.includes('ORDER_NOT_FOUND')) {
         const refreshedOrderId = await refreshPayPalOrder()
         if (refreshedOrderId) {
           try {
@@ -350,9 +395,9 @@ export default function PayPalPaymentForm(props: PayPalPaymentFormProps) {
         }
       }
       setMessageType('error')
-      setMessage(errorMsg)
+      setMessage(friendlyMsg)
       setShowRetry(true)
-      props.onError(errorMsg)
+      props.onError(friendlyMsg)
     } finally {
       setIsProcessing(false)
     }
