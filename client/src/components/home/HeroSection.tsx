@@ -130,7 +130,7 @@ export default function HeroSection() {
 
       <div className="absolute inset-0 flex items-center">
         <div className="mx-auto max-w-[1440px] w-full px-8">
-          <div className="max-w-lg animate-fadeIn">
+          <div className="max-w-2xl animate-fadeIn">
             <h1 className="font-['Playfair_Display'] text-4xl md:text-5xl lg:text-7xl text-white leading-tight mb-6">
               {slide.title}
             </h1>
